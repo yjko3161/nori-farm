@@ -1,6 +1,7 @@
-// 서비스 워커 - 오프라인에서도 게임 페이지 로딩
-// 캐시 버전을 올리면 사용자가 다음에 들어왔을 때 자동 업데이트
-const CACHE = "miro-v3";
+// 서비스 워커 - 오프라인 캐시
+// 리다이렉트된 응답을 그대로 캐시하면 PWA 탐색에서 브라우저가 거부함 (흰화면 원인).
+// → 받은 응답을 깨끗한 Response 로 재포장해서 저장.
+const CACHE = "miro-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,10 +14,28 @@ const ASSETS = [
   "./icons/icon-512.png",
 ];
 
+async function cacheClean(cache, request, response) {
+  // redirected=true 인 응답은 그대로 못 씀 → body 복사해서 새 Response 로
+  const body = await response.clone().blob();
+  const clean = new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  await cache.put(request, clean);
+}
+
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(ASSETS.map(async (url) => {
+      try {
+        const res = await fetch(url, { cache: "reload", redirect: "follow" });
+        if (res.ok || res.type === "opaque") await cacheClean(cache, url, res);
+      } catch {}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (e) => {
@@ -29,19 +48,23 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  // API 호출은 캐시하지 않고 네트워크로 (랭킹은 항상 최신)
+  // API 는 캐시하지 않음
   if (url.pathname.startsWith("/api/")) return;
-  // 그 외엔 캐시 우선, 없으면 네트워크
-  e.respondWith(
-    caches.match(e.request).then((cached) =>
-      cached || fetch(e.request).then((res) => {
-        // 같은 도메인 GET만 캐시에 추가
-        if (e.request.method === "GET" && url.origin === location.origin) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, copy));
-        }
-        return res;
-      }).catch(() => cached)
-    )
-  );
+  // POST, DELETE 등은 그대로 통과
+  if (e.request.method !== "GET") return;
+
+  e.respondWith((async () => {
+    const cached = await caches.match(e.request);
+    if (cached) return cached;
+    try {
+      const res = await fetch(e.request);
+      if (url.origin === location.origin && (res.ok || res.type === "opaque")) {
+        const cache = await caches.open(CACHE);
+        await cacheClean(cache, e.request, res.clone());
+      }
+      return res;
+    } catch {
+      return cached || Response.error();
+    }
+  })());
 });
