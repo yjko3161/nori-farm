@@ -23,6 +23,9 @@ os.makedirs(DATA, exist_ok=True)
 # 동시 쓰기 보호
 _lock = threading.Lock()
 
+# 지원하는 게임 종류
+KINDS = ("maze", "find", "whack", "memory", "math", "sound", "snake")
+
 
 def _ranking_path(kind):
     return os.path.join(DATA, f"ranking_{kind}.json")
@@ -65,7 +68,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path.startswith("/api/ranking/"):
             kind = u.path.rsplit("/", 1)[-1]
-            if kind in ("maze", "find"):
+            if kind in KINDS:
                 self._json(200, load_ranking(kind))
             else:
                 self._json(404, {"error": "unknown kind"})
@@ -78,7 +81,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(404, {"error": "not found"})
             return
         kind = u.path.rsplit("/", 1)[-1]
-        if kind not in ("maze", "find"):
+        if kind not in KINDS:
             self._json(404, {"error": "unknown kind"})
             return
         try:
@@ -103,11 +106,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "date": str(body.get("date", ""))[:10],
                 "id": float(body.get("id", 0.0)),
             }
-            if kind == "maze":
-                entry["moves"] = max(0, min(int(body.get("moves", 0)), 999_999))
-            else:
-                entry["cleared"] = max(0, min(int(body.get("cleared", 0)), 9999))
-                entry["wrong"] = max(0, min(int(body.get("wrong", 0)), 999_999))
+            # 게임별 추가 필드 (있으면 받고, 검증)
+            for opt in ("moves", "cleared", "wrong", "hits", "misses", "lives"):
+                if opt in body:
+                    entry[opt] = max(0, min(int(body.get(opt, 0)), 999_999))
         except (TypeError, ValueError):
             self._json(400, {"error": "bad fields"})
             return
@@ -127,7 +129,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(404, {"error": "not found"})
             return
         kind = u.path.rsplit("/", 1)[-1]
-        if kind not in ("maze", "find"):
+        if kind not in KINDS:
             self._json(404, {"error": "unknown kind"})
             return
         with _lock:

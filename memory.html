@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>🃏 메모리 카드</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="메모리">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+  :root { --accent: #ff7a59; --text: #4a3520; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    background: linear-gradient(160deg, #fff5e6, #ffe4b3);
+    color: var(--text); min-height: 100vh;
+    user-select: none; -webkit-user-select: none; overflow-x: hidden;
+  }
+  .app { max-width: 500px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  h1 { margin: 4px 0 2px; font-size: 22px; color: var(--accent); text-shadow: 2px 2px 0 #fff; }
+  .topnav { width: 100%; }
+  .topnav a {
+    text-decoration: none; color: var(--accent); background: #fff8e9;
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 0 #e9d8b0;
+  }
+  .bar {
+    width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: #fff8e9; padding: 10px; border-radius: 16px; box-shadow: 0 2px 0 #e9d8b0;
+    text-align: center;
+  }
+  .bar .label { font-size: 11px; color: #7a6244; font-weight: 600; }
+  .bar .val { font-size: 18px; color: var(--accent); font-weight: 800; }
+  .bar .val.small { font-size: 16px; color: #555; }
+
+  .board-wrap { background: #fff8e9; padding: 10px; border-radius: 18px; box-shadow: 0 4px 0 #e9d8b0; width: 100%; }
+  #board { display: grid; gap: 8px; }
+  .card {
+    aspect-ratio: 3/4;
+    perspective: 600px;
+    cursor: pointer;
+  }
+  .card .inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform 0.4s;
+    transform-style: preserve-3d;
+  }
+  .card.flipped .inner { transform: rotateY(180deg); }
+  .card.matched .inner { transform: rotateY(180deg); }
+  .card.matched .face { background: linear-gradient(135deg, #c9ecc9, #a4dca4); box-shadow: inset 0 0 0 2px #6abf69; }
+  .card .face, .card .back {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .card .back {
+    background: linear-gradient(135deg, #ffb347, #ff7a59);
+    color: #fff;
+    box-shadow: 0 3px 0 #c95838;
+  }
+  .card .back::before { content: "🐰"; opacity: 0.9; font-size: 32px; }
+  .card .face {
+    background: linear-gradient(135deg, #fffaf0, #fff0d8);
+    box-shadow: 0 3px 0 #e9d8b0;
+    transform: rotateY(180deg);
+  }
+
+  .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .btn { border: none; background: var(--accent); color: white; font-weight: 700;
+    padding: 10px 16px; border-radius: 12px; box-shadow: 0 3px 0 #c95838; font-size: 15px; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--accent); box-shadow: 0 3px 0 #e9d8b0; }
+  .btn.danger { background: #d96363; box-shadow: 0 3px 0 #a14747; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c95838; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  .overlay.show { display: flex; }
+  .modal { background: #fffaf0; padding: 22px; border-radius: 22px; text-align: center;
+    box-shadow: 0 10px 0 #c9a76a; max-width: 340px; width: 100%; }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 22px; }
+  .big { font-size: 44px; margin: 4px 0; }
+  .score-big { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; }
+  .input { width: 100%; border: 2px solid #f0dcae; border-radius: 12px; padding: 10px;
+    font-size: 16px; font-family: inherit; text-align: center; background: #fff; margin: 6px 0; color: var(--text); }
+  .ranking { text-align: left; background: #fff; border-radius: 12px; padding: 10px;
+    margin-top: 8px; max-height: 220px; overflow-y: auto; }
+  .ranking ol { margin: 0; padding-left: 20px; }
+  .ranking li { padding: 4px 0; font-size: 14px; }
+  .ranking li.mine { background: #fff2d0; border-radius: 6px; padding: 6px 8px; margin: 2px -8px; font-weight: 800; }
+  .ranking .meta { color: #7a6244; font-size: 12px; margin-left: 6px; }
+  .ranking .score { float: right; color: var(--accent); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav"><a href="./">← 메인</a></div>
+  <h1>🃏 메모리 카드</h1>
+
+  <div class="bar">
+    <div><div class="label">레벨</div><div class="val" id="levelNum">1</div></div>
+    <div><div class="label">짝</div><div class="val small" id="matched">0/3</div></div>
+    <div><div class="label">횟수</div><div class="val small" id="moves">0</div></div>
+    <div><div class="label">점수</div><div class="val" id="score">0</div></div>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn secondary" id="muteBtn">🔊 소리</button>
+    <button class="btn danger" id="stopBtn">🛑 그만하기</button>
+  </div>
+
+  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
+    카드를 뒤집어서 같은 그림 짝을 찾아요!
+  </p>
+</div>
+
+<div class="overlay" id="winOverlay">
+  <div class="modal">
+    <div class="big">🎉</div>
+    <h2 id="winTitle">레벨 1 클리어!</h2>
+    <p id="winText">…</p>
+    <div class="btnrow" style="margin-top:10px;">
+      <button class="btn" id="winNext">다음 레벨 ▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="endOverlay">
+  <div class="modal">
+    <div class="big">🏁</div>
+    <h2>게임 종료!</h2>
+    <p id="endSummary">…</p>
+    <div class="score-big" id="endScore">0</div>
+    <p>이름을 적어줘!</p>
+    <input class="input" id="nameInput" maxlength="8" placeholder="예: 토끼1">
+    <div class="btnrow">
+      <button class="btn" id="saveScoreBtn">랭킹에 올리기 🏆</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rankOverlay">
+  <div class="modal">
+    <div class="big">🏆</div>
+    <h2>메모리 랭킹 TOP 10</h2>
+    <div class="ranking" id="rankingList"></div>
+    <div class="btnrow" style="margin-top:12px;">
+      <button class="btn secondary" id="rankClearBtn">초기화</button>
+      <button class="btn" id="rankRestartBtn">다시 도전 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 효과음
+let audioCtx = null, muted = false;
+try { muted = localStorage.getItem("memory_muted") === "1"; } catch {}
+function ensureAudio() {
+  if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(f, dur, type="sine", gain=0.15, when=0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  flip()  { tone(620, 0.06, "triangle", 0.1); },
+  match() { tone(660, 0.1, "triangle", 0.15); tone(880, 0.12, "triangle", 0.15, 0.08); },
+  nope()  { tone(280, 0.12, "square", 0.08); },
+  clear() { tone(523, 0.12, "triangle", 0.18); tone(659, 0.12, "triangle", 0.18, 0.12); tone(784, 0.12, "triangle", 0.18, 0.24); tone(1046, 0.25, "triangle", 0.2, 0.36); },
+  end()   { tone(440, 0.2, "triangle", 0.15); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
+};
+
+// 카드 이모지 풀
+const EMOJIS = ["🐰","🥕","🐱","🐶","🐻","🦊","🐸","🐼","🐔","🐷","🦁","🐯","🦄","🐹","🐨","🐮","🐵","🦊","🦒","🦓","🐝","🐢"];
+
+const $ = q => document.querySelector(q);
+let level = 1;
+let pairs = 3;
+let cols = 3;
+let cards = [];
+let flipped = [];
+let matchedCount = 0;
+let moves = 0;
+let totalScore = 0;
+let totalMoves = 0;
+let totalSeconds = 0;
+let levelStart = 0;
+let timerId = null;
+let won = false;
+let busy = false;
+
+function pairsForLevel(n) {
+  // L1: 3쌍(2x3), L2: 4쌍(2x4), L3: 6쌍(3x4), L4: 8쌍(4x4), L5: 10쌍(4x5), 그 후 10쌍 유지
+  const arr = [3, 4, 6, 8, 10];
+  return arr[Math.min(n - 1, arr.length - 1)];
+}
+function gridSize(p) {
+  // 카드 총수 = 2p. 적당한 cols 결정
+  const total = p * 2;
+  if (total <= 6) return { cols: 3, rows: 2 };
+  if (total <= 8) return { cols: 4, rows: 2 };
+  if (total <= 12) return { cols: 4, rows: 3 };
+  if (total <= 16) return { cols: 4, rows: 4 };
+  return { cols: 5, rows: 4 };
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startLevel(n) {
+  level = n;
+  pairs = pairsForLevel(n);
+  const gs = gridSize(pairs);
+  cols = gs.cols;
+  // 카드 만들기
+  const pool = shuffle(EMOJIS.slice()).slice(0, pairs);
+  cards = shuffle([...pool, ...pool]);
+  flipped = [];
+  matchedCount = 0;
+  moves = 0;
+  won = false;
+  busy = false;
+  levelStart = Date.now();
+  $("#levelNum").textContent = n;
+  $("#matched").textContent = `0/${pairs}`;
+  $("#moves").textContent = "0";
+  renderBoard();
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(() => { /* placeholder if needed */ }, 1000);
+}
+
+function renderBoard() {
+  const b = $("#board");
+  b.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  b.innerHTML = "";
+  cards.forEach((emoji, i) => {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.dataset.idx = i;
+    c.innerHTML = `<div class="inner"><div class="back"></div><div class="face">${emoji}</div></div>`;
+    c.onclick = () => onCardClick(i, c);
+    b.appendChild(c);
+  });
+}
+
+function onCardClick(idx, el) {
+  if (won || busy) return;
+  if (el.classList.contains("flipped") || el.classList.contains("matched")) return;
+  el.classList.add("flipped");
+  sfx.flip();
+  flipped.push({ idx, el, emoji: cards[idx] });
+  if (flipped.length === 2) {
+    moves++;
+    $("#moves").textContent = moves;
+    const [a, b] = flipped;
+    if (a.emoji === b.emoji) {
+      a.el.classList.add("matched");
+      b.el.classList.add("matched");
+      flipped = [];
+      matchedCount++;
+      $("#matched").textContent = `${matchedCount}/${pairs}`;
+      sfx.match();
+      if (matchedCount === pairs) winLevel();
+    } else {
+      busy = true;
+      sfx.nope();
+      setTimeout(() => {
+        a.el.classList.remove("flipped");
+        b.el.classList.remove("flipped");
+        flipped = [];
+        busy = false;
+      }, 700);
+    }
+  }
+}
+
+function winLevel() {
+  won = true;
+  const sec = Math.max(1, Math.round((Date.now() - levelStart) / 1000));
+  const minMoves = pairs;  // 이론 최소 시도
+  const base = 100 + level * 30;
+  const efficiency = Math.max(0, (minMoves * 2 - moves) * 5);
+  const speed = Math.max(0, 60 - sec);
+  const gain = base + efficiency + speed;
+  totalScore += gain;
+  totalMoves += moves;
+  totalSeconds += sec;
+  $("#score").textContent = totalScore;
+  sfx.clear();
+  $("#winTitle").textContent = `레벨 ${level} 클리어!`;
+  $("#winText").textContent = `${pairs}쌍 · ${moves}번 · ${sec}초 · +${gain}점`;
+  $("#winOverlay").classList.add("show");
+}
+
+function nextLevel() {
+  $("#winOverlay").classList.remove("show");
+  startLevel(level + 1);
+}
+
+// 랭킹
+const RANK_KEY = "memory_rank_v1";
+const NAME_KEY = "memory_last_name";
+function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch { return []; } }
+function saveRanking(arr) { try { localStorage.setItem(RANK_KEY, JSON.stringify(arr)); } catch {} }
+async function postServer(entry) {
+  try { const r = await fetch("/api/ranking/memory", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(entry) }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+async function fetchServer() {
+  try { const r = await fetch("/api/ranking/memory", { cache:"no-store" }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+
+let lastSavedEntryId = null;
+function endGame() {
+  $("#winOverlay").classList.remove("show");
+  sfx.end();
+  $("#endSummary").textContent = `레벨 ${level}까지 · 총 ${totalMoves}번 · ${totalSeconds}초`;
+  $("#endScore").textContent = totalScore;
+  let last = "";
+  try { last = localStorage.getItem(NAME_KEY) || ""; } catch {}
+  $("#nameInput").value = last;
+  $("#endOverlay").classList.add("show");
+}
+
+async function saveScore() {
+  const name = ($("#nameInput").value || "").trim().slice(0, 8) || "토끼";
+  try { localStorage.setItem(NAME_KEY, name); } catch {}
+  const entry = {
+    id: Date.now() + Math.random(),
+    name, score: totalScore, level,
+    moves: totalMoves, seconds: totalSeconds,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const local = loadRanking();
+  local.push(entry); local.sort((a,b)=>b.score-a.score);
+  saveRanking(local.slice(0, 10));
+  lastSavedEntryId = entry.id;
+  await postServer(entry);
+  $("#endOverlay").classList.remove("show");
+  showRanking();
+}
+
+async function showRanking() {
+  const list = $("#rankingList");
+  list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">불러오는 중…</p>';
+  $("#rankOverlay").classList.add("show");
+  const server = await fetchServer();
+  const ranking = server !== null ? server : loadRanking();
+  const source = server !== null ? "🌐 가족 공용" : "📱 이 기기만";
+  if (ranking.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">아직 기록이 없어요</p>';
+  } else {
+    const ol = document.createElement("ol");
+    ranking.forEach(e => {
+      const li = document.createElement("li");
+      if (e.id === lastSavedEntryId) li.className = "mine";
+      li.innerHTML = `
+        <span>${escapeHtml(e.name)}</span>
+        <span class="meta">L${e.level} · ${e.moves}번 · ${e.seconds}초</span>
+        <span class="score">${e.score}점</span>`;
+      ol.appendChild(li);
+    });
+    list.innerHTML = `<p style="text-align:center; color:#7a6244; font-size:12px; margin:0 0 6px;">${source}</p>`;
+    list.appendChild(ol);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function restart() {
+  $("#rankOverlay").classList.remove("show");
+  level = 1; totalScore = 0; totalMoves = 0; totalSeconds = 0;
+  $("#score").textContent = "0";
+  startLevel(1);
+}
+
+$("#stopBtn").onclick = () => endGame();
+$("#winNext").onclick = () => nextLevel();
+$("#saveScoreBtn").onclick = () => saveScore();
+$("#rankRestartBtn").onclick = () => restart();
+$("#rankClearBtn").onclick = async () => {
+  if (!confirm("가족 공용까지 다 지울까요?")) return;
+  saveRanking([]);
+  try { await fetch("/api/ranking/memory", { method:"DELETE" }); } catch {}
+  showRanking();
+};
+const muteBtn = $("#muteBtn");
+function refreshMute() { muteBtn.textContent = muted ? "🔇 소리" : "🔊 소리"; }
+refreshMute();
+muteBtn.onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem("memory_muted", muted?"1":"0"); } catch {}
+  refreshMute();
+  if (!muted) { ensureAudio(); sfx.flip(); }
+};
+window.addEventListener("pointerdown", function once() {
+  ensureAudio();
+  window.removeEventListener("pointerdown", once);
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+startLevel(1);
+</script>
+</body>
+</html>

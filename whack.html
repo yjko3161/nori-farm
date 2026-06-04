@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>🎯 두더지 잡기</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="두더지">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+  :root { --accent: #ff7a59; --text: #4a3520; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    background: linear-gradient(160deg, #fff5e6, #ffe4b3);
+    color: var(--text); min-height: 100vh;
+    user-select: none; -webkit-user-select: none; overflow-x: hidden;
+  }
+  .app { max-width: 500px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  h1 { margin: 4px 0 2px; font-size: 22px; color: var(--accent); text-shadow: 2px 2px 0 #fff; }
+  .topnav { width: 100%; }
+  .topnav a {
+    text-decoration: none; color: var(--accent); background: #fff8e9;
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 0 #e9d8b0;
+  }
+  .bar {
+    width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: #fff8e9; padding: 10px; border-radius: 16px; box-shadow: 0 2px 0 #e9d8b0;
+    text-align: center;
+  }
+  .bar .label { font-size: 11px; color: #7a6244; font-weight: 600; }
+  .bar .val { font-size: 18px; color: var(--accent); font-weight: 800; }
+  .bar .val.small { font-size: 16px; color: #555; }
+  .field {
+    background: #8b6238; padding: 16px; border-radius: 22px;
+    box-shadow: 0 5px 0 #6b4a26; width: 100%;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .hole {
+    aspect-ratio: 1/1; background: radial-gradient(circle at 50% 70%, #5b3d20 0%, #3a2410 70%);
+    border-radius: 50%; position: relative; overflow: hidden;
+    box-shadow: inset 0 6px 8px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+  .mole {
+    position: absolute; left: 12%; right: 12%; bottom: -100%;
+    aspect-ratio: 1/1;
+    background: radial-gradient(ellipse at 50% 35%, #d39a6a 0%, #a06a3a 70%);
+    border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+    transition: bottom 0.18s ease-out;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+  }
+  .mole.up { bottom: 20%; }
+  .mole.hit {
+    background: radial-gradient(ellipse at 50% 35%, #ffcf6e 0%, #ff9933 70%);
+    transition: bottom 0.1s, transform 0.15s;
+    transform: scale(0.85);
+  }
+  .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    border: none; background: var(--accent); color: white; font-weight: 700;
+    padding: 10px 16px; border-radius: 12px; box-shadow: 0 3px 0 #c95838;
+    font-size: 15px; cursor: pointer;
+  }
+  .btn.secondary { background: #fff; color: var(--accent); box-shadow: 0 3px 0 #e9d8b0; }
+  .btn.danger { background: #d96363; box-shadow: 0 3px 0 #a14747; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c95838; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; padding: 16px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #fffaf0; padding: 22px; border-radius: 22px; text-align: center;
+    box-shadow: 0 10px 0 #c9a76a; max-width: 340px; width: 100%;
+  }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 22px; }
+  .big { font-size: 44px; margin: 4px 0; }
+  .score-big { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; }
+  .input { width: 100%; border: 2px solid #f0dcae; border-radius: 12px; padding: 10px;
+    font-size: 16px; font-family: inherit; text-align: center; background: #fff; margin: 6px 0; color: var(--text); }
+  .input:focus { outline: none; border-color: var(--accent); }
+  .ranking { text-align: left; background: #fff; border-radius: 12px; padding: 10px;
+    margin-top: 8px; max-height: 220px; overflow-y: auto; }
+  .ranking ol { margin: 0; padding-left: 20px; }
+  .ranking li { padding: 4px 0; font-size: 14px; }
+  .ranking li.mine { background: #fff2d0; border-radius: 6px; padding: 6px 8px; margin: 2px -8px; font-weight: 800; }
+  .ranking .meta { color: #7a6244; font-size: 12px; margin-left: 6px; }
+  .ranking .score { float: right; color: var(--accent); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav"><a href="./">← 메인</a></div>
+  <h1>🎯 두더지 잡기</h1>
+
+  <div class="bar">
+    <div><div class="label">레벨</div><div class="val" id="levelNum">1</div></div>
+    <div><div class="label">남은 시간</div><div class="val small" id="time">20초</div></div>
+    <div><div class="label">잡음</div><div class="val small" id="hits">0</div></div>
+    <div><div class="label">점수</div><div class="val" id="score">0</div></div>
+  </div>
+
+  <div class="field">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn secondary" id="muteBtn">🔊 소리</button>
+    <button class="btn danger" id="stopBtn">🛑 그만하기</button>
+  </div>
+
+  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
+    두더지가 올라올 때 빨리 탭하세요!
+  </p>
+</div>
+
+<div class="overlay" id="winOverlay">
+  <div class="modal">
+    <div class="big">⏱️</div>
+    <h2 id="winTitle">라운드 끝!</h2>
+    <p id="winText">…</p>
+    <div class="btnrow" style="margin-top:10px;">
+      <button class="btn" id="winNext">다음 라운드 ▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="endOverlay">
+  <div class="modal">
+    <div class="big">🏁</div>
+    <h2>게임 종료!</h2>
+    <p id="endSummary">…</p>
+    <div class="score-big" id="endScore">0</div>
+    <p>이름을 적어줘! (랭킹)</p>
+    <input class="input" id="nameInput" maxlength="8" placeholder="예: 토끼1">
+    <div class="btnrow">
+      <button class="btn" id="saveScoreBtn">랭킹에 올리기 🏆</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rankOverlay">
+  <div class="modal">
+    <div class="big">🏆</div>
+    <h2>두더지 랭킹 TOP 10</h2>
+    <div class="ranking" id="rankingList"></div>
+    <div class="btnrow" style="margin-top:12px;">
+      <button class="btn secondary" id="rankClearBtn">초기화</button>
+      <button class="btn" id="rankRestartBtn">다시 도전 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 효과음
+let audioCtx = null;
+let muted = false;
+try { muted = localStorage.getItem("whack_muted") === "1"; } catch {}
+function ensureAudio() {
+  if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(f, dur, type="sine", gain=0.15, when=0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  pop()  { tone(120, 0.05, "sine", 0.12); },
+  hit()  { tone(880, 0.08, "triangle", 0.2); tone(1320, 0.1, "triangle", 0.15, 0.05); },
+  miss() { tone(180, 0.15, "square", 0.1); },
+  end()  { tone(880, 0.12, "triangle", 0.18); tone(660, 0.12, "triangle", 0.18, 0.1); tone(440, 0.2, "triangle", 0.18, 0.2); },
+  gameover() { tone(440, 0.2, "triangle", 0.15); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
+};
+
+const $ = q => document.querySelector(q);
+const HOLES = 9;
+let level = 1, hits = 0, misses = 0, totalScore = 0;
+let roundTime = 20, remaining = 20;
+let timerId = null, moleTimer = null;
+let currentMole = -1, won = false;
+
+function buildGrid() {
+  const g = $("#grid");
+  g.innerHTML = "";
+  for (let i = 0; i < HOLES; i++) {
+    const h = document.createElement("div");
+    h.className = "hole";
+    h.dataset.idx = i;
+    h.innerHTML = `<div class="mole" data-idx="${i}">🐿️</div>`;
+    h.onclick = () => onTap(i);
+    g.appendChild(h);
+  }
+}
+
+function startRound() {
+  remaining = roundTime;
+  hits = 0;
+  won = false;
+  $("#hits").textContent = "0";
+  $("#time").textContent = remaining + "초";
+  $("#levelNum").textContent = level;
+  scheduleNextMole();
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(() => {
+    remaining--;
+    $("#time").textContent = remaining + "초";
+    if (remaining <= 0) endRound();
+  }, 1000);
+}
+
+function moleLifeMs() {
+  // 레벨 올라갈수록 짧아짐
+  return Math.max(450, 1200 - (level - 1) * 80);
+}
+function moleGapMs() {
+  return Math.max(250, 700 - (level - 1) * 40);
+}
+
+function scheduleNextMole() {
+  if (remaining <= 0 || won) return;
+  clearTimeout(moleTimer);
+  moleTimer = setTimeout(() => {
+    showMole();
+  }, moleGapMs());
+}
+
+function showMole() {
+  if (remaining <= 0 || won) return;
+  const idx = Math.floor(Math.random() * HOLES);
+  currentMole = idx;
+  const m = document.querySelector(`.mole[data-idx="${idx}"]`);
+  if (!m) return;
+  m.classList.remove("hit");
+  m.classList.add("up");
+  sfx.pop();
+  setTimeout(() => {
+    m.classList.remove("up");
+    if (currentMole === idx) {
+      currentMole = -1;
+    }
+    scheduleNextMole();
+  }, moleLifeMs());
+}
+
+function onTap(idx) {
+  if (won) return;
+  if (idx === currentMole) {
+    hits++;
+    $("#hits").textContent = hits;
+    sfx.hit();
+    const m = document.querySelector(`.mole[data-idx="${idx}"]`);
+    if (m) {
+      m.classList.add("hit");
+      setTimeout(() => m.classList.remove("up"), 80);
+    }
+    currentMole = -1;
+  } else {
+    misses++;
+    sfx.miss();
+  }
+}
+
+function endRound() {
+  won = true;
+  clearInterval(timerId); timerId = null;
+  clearTimeout(moleTimer);
+  // 라운드 점수: hit수 × 10 + 레벨 보너스
+  const gain = hits * 10 + level * 5;
+  totalScore += gain;
+  $("#score").textContent = totalScore;
+  sfx.end();
+  $("#winTitle").textContent = `레벨 ${level} 끝!`;
+  $("#winText").textContent = `${hits}마리 잡음 · +${gain}점`;
+  $("#winOverlay").classList.add("show");
+}
+
+function nextRound() {
+  $("#winOverlay").classList.remove("show");
+  level++;
+  startRound();
+}
+
+// 랭킹
+const RANK_KEY = "whack_rank_v1";
+const NAME_KEY = "whack_last_name";
+function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch { return []; } }
+function saveRanking(arr) { try { localStorage.setItem(RANK_KEY, JSON.stringify(arr)); } catch {} }
+async function postServer(entry) {
+  try { const r = await fetch("/api/ranking/whack", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(entry) }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+async function fetchServer() {
+  try { const r = await fetch("/api/ranking/whack", { cache:"no-store" }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+
+let lastSavedEntryId = null;
+function endGame() {
+  clearInterval(timerId); timerId = null;
+  clearTimeout(moleTimer);
+  $("#winOverlay").classList.remove("show");
+  sfx.gameover();
+  $("#endSummary").textContent = `레벨 ${level}까지 · 총 잡음 누적`;
+  $("#endScore").textContent = totalScore;
+  let last = "";
+  try { last = localStorage.getItem(NAME_KEY) || ""; } catch {}
+  $("#nameInput").value = last;
+  $("#endOverlay").classList.add("show");
+}
+
+async function saveScore() {
+  const name = ($("#nameInput").value || "").trim().slice(0, 8) || "토끼";
+  try { localStorage.setItem(NAME_KEY, name); } catch {}
+  const entry = {
+    id: Date.now() + Math.random(),
+    name, score: totalScore, level,
+    hits, misses, seconds: 0,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const local = loadRanking();
+  local.push(entry); local.sort((a,b)=>b.score-a.score);
+  saveRanking(local.slice(0, 10));
+  lastSavedEntryId = entry.id;
+  await postServer(entry);
+  $("#endOverlay").classList.remove("show");
+  showRanking();
+}
+
+async function showRanking() {
+  const list = $("#rankingList");
+  list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">불러오는 중…</p>';
+  $("#rankOverlay").classList.add("show");
+  const server = await fetchServer();
+  const ranking = server !== null ? server : loadRanking();
+  const source = server !== null ? "🌐 가족 공용" : "📱 이 기기만";
+  if (ranking.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">아직 기록이 없어요</p>';
+  } else {
+    const ol = document.createElement("ol");
+    ranking.forEach(e => {
+      const li = document.createElement("li");
+      if (e.id === lastSavedEntryId) li.className = "mine";
+      li.innerHTML = `
+        <span>${escapeHtml(e.name)}</span>
+        <span class="meta">L${e.level} · 잡음${e.hits||0} · ${e.date}</span>
+        <span class="score">${e.score}점</span>`;
+      ol.appendChild(li);
+    });
+    list.innerHTML = `<p style="text-align:center; color:#7a6244; font-size:12px; margin:0 0 6px;">${source}</p>`;
+    list.appendChild(ol);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function restart() {
+  $("#rankOverlay").classList.remove("show");
+  level = 1; totalScore = 0; misses = 0;
+  $("#score").textContent = "0";
+  startRound();
+}
+
+$("#stopBtn").onclick = () => endGame();
+$("#winNext").onclick = () => nextRound();
+$("#saveScoreBtn").onclick = () => saveScore();
+$("#rankRestartBtn").onclick = () => restart();
+$("#rankClearBtn").onclick = async () => {
+  if (!confirm("가족 공용까지 다 지울까요?")) return;
+  saveRanking([]);
+  try { await fetch("/api/ranking/whack", { method:"DELETE" }); } catch {}
+  showRanking();
+};
+const muteBtn = $("#muteBtn");
+function refreshMute() { muteBtn.textContent = muted ? "🔇 소리" : "🔊 소리"; }
+refreshMute();
+muteBtn.onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem("whack_muted", muted?"1":"0"); } catch {}
+  refreshMute();
+  if (!muted) { ensureAudio(); sfx.pop(); }
+};
+window.addEventListener("pointerdown", function once() {
+  ensureAudio();
+  window.removeEventListener("pointerdown", once);
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+buildGrid();
+startRound();
+</script>
+</body>
+</html>

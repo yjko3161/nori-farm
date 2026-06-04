@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>🔢 수학 퀴즈</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="수학퀴즈">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+  :root { --accent: #ff7a59; --text: #4a3520; --ok: #6abf69; --bad: #d96363; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    background: linear-gradient(160deg, #fff5e6, #ffe4b3);
+    color: var(--text); min-height: 100vh;
+    user-select: none; -webkit-user-select: none; overflow-x: hidden;
+  }
+  .app { max-width: 500px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  h1 { margin: 4px 0 2px; font-size: 22px; color: var(--accent); text-shadow: 2px 2px 0 #fff; }
+  .topnav { width: 100%; }
+  .topnav a { text-decoration: none; color: var(--accent); background: #fff8e9;
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 0 #e9d8b0; }
+  .bar { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: #fff8e9; padding: 10px; border-radius: 16px; box-shadow: 0 2px 0 #e9d8b0; text-align: center; }
+  .bar .label { font-size: 11px; color: #7a6244; font-weight: 600; }
+  .bar .val { font-size: 18px; color: var(--accent); font-weight: 800; }
+  .bar .val.small { font-size: 16px; color: #555; }
+
+  .problem-box {
+    width: 100%; background: #fff8e9; padding: 24px 20px; border-radius: 22px;
+    box-shadow: 0 5px 0 #e9d8b0; text-align: center;
+  }
+  .problem {
+    font-size: 56px; font-weight: 900; color: var(--text);
+    letter-spacing: 4px;
+    margin: 8px 0;
+  }
+  .problem .op { color: var(--accent); margin: 0 8px; }
+  .problem .q { color: var(--accent); }
+
+  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .answer-btn {
+    border: none; background: #fff;
+    color: var(--text); font-size: 28px; font-weight: 800;
+    padding: 18px 8px;
+    border-radius: 16px;
+    box-shadow: 0 4px 0 #e9d8b0;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .answer-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #e9d8b0; }
+  .answer-btn.right { background: var(--ok); color: #fff; box-shadow: 0 4px 0 #4a8a4a; animation: pop 0.3s; }
+  .answer-btn.wrong { background: var(--bad); color: #fff; box-shadow: 0 4px 0 #a14747; animation: shake 0.3s; }
+  @keyframes pop { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .lives { font-size: 22px; letter-spacing: 4px; margin: 4px 0; }
+
+  .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .btn { border: none; background: var(--accent); color: white; font-weight: 700;
+    padding: 10px 16px; border-radius: 12px; box-shadow: 0 3px 0 #c95838; font-size: 15px; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--accent); box-shadow: 0 3px 0 #e9d8b0; }
+  .btn.danger { background: #d96363; box-shadow: 0 3px 0 #a14747; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c95838; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  .overlay.show { display: flex; }
+  .modal { background: #fffaf0; padding: 22px; border-radius: 22px; text-align: center;
+    box-shadow: 0 10px 0 #c9a76a; max-width: 340px; width: 100%; }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 22px; }
+  .big { font-size: 44px; margin: 4px 0; }
+  .score-big { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; }
+  .input { width: 100%; border: 2px solid #f0dcae; border-radius: 12px; padding: 10px;
+    font-size: 16px; font-family: inherit; text-align: center; background: #fff; margin: 6px 0; color: var(--text); }
+  .ranking { text-align: left; background: #fff; border-radius: 12px; padding: 10px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+  .ranking ol { margin: 0; padding-left: 20px; }
+  .ranking li { padding: 4px 0; font-size: 14px; }
+  .ranking li.mine { background: #fff2d0; border-radius: 6px; padding: 6px 8px; margin: 2px -8px; font-weight: 800; }
+  .ranking .meta { color: #7a6244; font-size: 12px; margin-left: 6px; }
+  .ranking .score { float: right; color: var(--accent); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav"><a href="./">← 메인</a></div>
+  <h1>🔢 수학 퀴즈</h1>
+
+  <div class="bar">
+    <div><div class="label">레벨</div><div class="val" id="levelNum">1</div></div>
+    <div><div class="label">맞춘 수</div><div class="val small" id="correct">0</div></div>
+    <div><div class="label">목숨</div><div class="val small" id="livesVal">❤️❤️❤️</div></div>
+    <div><div class="label">점수</div><div class="val" id="score">0</div></div>
+  </div>
+
+  <div class="problem-box">
+    <div class="problem" id="problem">3 <span class="op">+</span> 2 <span class="op">=</span> <span class="q">?</span></div>
+  </div>
+
+  <div class="answers" id="answers"></div>
+
+  <div class="btnrow" style="margin-top: 8px;">
+    <button class="btn secondary" id="muteBtn">🔊 소리</button>
+    <button class="btn danger" id="stopBtn">🛑 그만하기</button>
+  </div>
+
+  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
+    정답을 골라요! 틀리면 ❤️ 하나가 사라져요
+  </p>
+</div>
+
+<div class="overlay" id="endOverlay">
+  <div class="modal">
+    <div class="big">🏁</div>
+    <h2 id="endTitle">게임 종료!</h2>
+    <p id="endSummary">…</p>
+    <div class="score-big" id="endScore">0</div>
+    <p>이름을 적어줘!</p>
+    <input class="input" id="nameInput" maxlength="8" placeholder="예: 토끼1">
+    <div class="btnrow">
+      <button class="btn" id="saveScoreBtn">랭킹에 올리기 🏆</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rankOverlay">
+  <div class="modal">
+    <div class="big">🏆</div>
+    <h2>수학퀴즈 랭킹 TOP 10</h2>
+    <div class="ranking" id="rankingList"></div>
+    <div class="btnrow" style="margin-top:12px;">
+      <button class="btn secondary" id="rankClearBtn">초기화</button>
+      <button class="btn" id="rankRestartBtn">다시 도전 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 효과음
+let audioCtx = null, muted = false;
+try { muted = localStorage.getItem("math_muted") === "1"; } catch {}
+function ensureAudio() {
+  if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(f, dur, type="sine", gain=0.15, when=0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  right() { tone(660, 0.1, "triangle", 0.18); tone(880, 0.15, "triangle", 0.18, 0.08); },
+  wrong() { tone(280, 0.18, "square", 0.1); },
+  end()   { tone(440, 0.2, "triangle", 0.15); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
+};
+
+const $ = q => document.querySelector(q);
+let level = 1, correct = 0, lives = 3, totalScore = 0;
+let currentAnswer = 0;
+let problemStart = 0;
+let lastWrong = false;
+
+// 레벨별 난이도
+function makeProblem() {
+  // L1-3: 1~10 더하기
+  // L4-6: 1~10 빼기 (결과 양수)
+  // L7-10: 1~20 더하기/빼기
+  // L11+: 1~30, 곱하기 1~5 추가
+  let a, b, op, ans;
+  if (level <= 3) {
+    a = randInt(1, 10); b = randInt(1, 10); op = "+";
+    ans = a + b;
+  } else if (level <= 6) {
+    a = randInt(2, 10); b = randInt(1, a); op = "-";
+    ans = a - b;
+  } else if (level <= 10) {
+    if (Math.random() < 0.5) {
+      a = randInt(5, 20); b = randInt(1, 20); op = "+"; ans = a + b;
+    } else {
+      a = randInt(5, 20); b = randInt(1, a); op = "-"; ans = a - b;
+    }
+  } else {
+    const r = Math.random();
+    if (r < 0.4) {
+      a = randInt(5, 30); b = randInt(1, 20); op = "+"; ans = a + b;
+    } else if (r < 0.7) {
+      a = randInt(5, 30); b = randInt(1, a); op = "-"; ans = a - b;
+    } else {
+      a = randInt(2, 5); b = randInt(2, 5); op = "×"; ans = a * b;
+    }
+  }
+  return { a, b, op, ans };
+}
+function randInt(lo, hi) { return Math.floor(Math.random() * (hi - lo + 1)) + lo; }
+
+function makeChoices(ans) {
+  // 정답 + 가짜 3개 (가까운 오답들), 무작위 배치
+  const set = new Set([ans]);
+  while (set.size < 4) {
+    const off = randInt(-3, 3);
+    if (off === 0) continue;
+    const fake = ans + off;
+    if (fake < 0) continue;
+    set.add(fake);
+  }
+  const arr = Array.from(set);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function nextProblem() {
+  const p = makeProblem();
+  currentAnswer = p.ans;
+  $("#problem").innerHTML = `${p.a} <span class="op">${p.op}</span> ${p.b} <span class="op">=</span> <span class="q">?</span>`;
+  const choices = makeChoices(p.ans);
+  const wrap = $("#answers");
+  wrap.innerHTML = "";
+  choices.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = c;
+    btn.onclick = () => onAnswer(c, btn);
+    wrap.appendChild(btn);
+  });
+  problemStart = Date.now();
+  lastWrong = false;
+}
+
+function onAnswer(c, btn) {
+  if (c === currentAnswer) {
+    btn.classList.add("right");
+    sfx.right();
+    const sec = Math.max(1, Math.round((Date.now() - problemStart) / 1000));
+    const speedBonus = Math.max(0, 10 - sec);
+    const gain = 50 + level * 5 + speedBonus * 3 - (lastWrong ? 20 : 0);
+    totalScore += Math.max(10, gain);
+    correct++;
+    level = Math.floor(correct / 3) + 1;  // 3문제 맞출 때마다 레벨업
+    $("#correct").textContent = correct;
+    $("#score").textContent = totalScore;
+    $("#levelNum").textContent = level;
+    setTimeout(() => nextProblem(), 600);
+  } else {
+    btn.classList.add("wrong");
+    sfx.wrong();
+    lives--;
+    lastWrong = true;
+    $("#livesVal").textContent = "❤️".repeat(lives) || "💀";
+    if (lives <= 0) {
+      setTimeout(() => endGame(), 700);
+      return;
+    }
+    setTimeout(() => {
+      btn.classList.remove("wrong");
+    }, 600);
+  }
+}
+
+// 랭킹
+const RANK_KEY = "math_rank_v1";
+const NAME_KEY = "math_last_name";
+function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch { return []; } }
+function saveRanking(arr) { try { localStorage.setItem(RANK_KEY, JSON.stringify(arr)); } catch {} }
+async function postServer(entry) {
+  try { const r = await fetch("/api/ranking/math", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(entry) }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+async function fetchServer() {
+  try { const r = await fetch("/api/ranking/math", { cache:"no-store" }); if (r.ok) return await r.json(); } catch {}
+  return null;
+}
+
+let lastSavedEntryId = null;
+function endGame() {
+  sfx.end();
+  $("#endTitle").textContent = lives <= 0 ? "💀 목숨 다 떨어짐" : "🏁 게임 종료!";
+  $("#endSummary").textContent = `레벨 ${level} · ${correct}문제 맞춤`;
+  $("#endScore").textContent = totalScore;
+  let last = "";
+  try { last = localStorage.getItem(NAME_KEY) || ""; } catch {}
+  $("#nameInput").value = last;
+  $("#endOverlay").classList.add("show");
+}
+
+async function saveScore() {
+  const name = ($("#nameInput").value || "").trim().slice(0, 8) || "토끼";
+  try { localStorage.setItem(NAME_KEY, name); } catch {}
+  const entry = {
+    id: Date.now() + Math.random(),
+    name, score: totalScore, level,
+    correct, lives, seconds: 0,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const local = loadRanking();
+  local.push(entry); local.sort((a,b)=>b.score-a.score);
+  saveRanking(local.slice(0, 10));
+  lastSavedEntryId = entry.id;
+  await postServer(entry);
+  $("#endOverlay").classList.remove("show");
+  showRanking();
+}
+
+async function showRanking() {
+  const list = $("#rankingList");
+  list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">불러오는 중…</p>';
+  $("#rankOverlay").classList.add("show");
+  const server = await fetchServer();
+  const ranking = server !== null ? server : loadRanking();
+  const source = server !== null ? "🌐 가족 공용" : "📱 이 기기만";
+  if (ranking.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">아직 기록이 없어요</p>';
+  } else {
+    const ol = document.createElement("ol");
+    ranking.forEach(e => {
+      const li = document.createElement("li");
+      if (e.id === lastSavedEntryId) li.className = "mine";
+      li.innerHTML = `
+        <span>${escapeHtml(e.name)}</span>
+        <span class="meta">L${e.level} · ${e.correct||0}문제 맞춤</span>
+        <span class="score">${e.score}점</span>`;
+      ol.appendChild(li);
+    });
+    list.innerHTML = `<p style="text-align:center; color:#7a6244; font-size:12px; margin:0 0 6px;">${source}</p>`;
+    list.appendChild(ol);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function restart() {
+  $("#rankOverlay").classList.remove("show");
+  level = 1; correct = 0; lives = 3; totalScore = 0;
+  $("#correct").textContent = "0";
+  $("#livesVal").textContent = "❤️❤️❤️";
+  $("#score").textContent = "0";
+  $("#levelNum").textContent = "1";
+  nextProblem();
+}
+
+$("#stopBtn").onclick = () => endGame();
+$("#saveScoreBtn").onclick = () => saveScore();
+$("#rankRestartBtn").onclick = () => restart();
+$("#rankClearBtn").onclick = async () => {
+  if (!confirm("가족 공용까지 다 지울까요?")) return;
+  saveRanking([]);
+  try { await fetch("/api/ranking/math", { method:"DELETE" }); } catch {}
+  showRanking();
+};
+const muteBtn = $("#muteBtn");
+function refreshMute() { muteBtn.textContent = muted ? "🔇 소리" : "🔊 소리"; }
+refreshMute();
+muteBtn.onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem("math_muted", muted?"1":"0"); } catch {}
+  refreshMute();
+  if (!muted) { ensureAudio(); sfx.right(); }
+};
+window.addEventListener("pointerdown", function once() {
+  ensureAudio();
+  window.removeEventListener("pointerdown", once);
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+nextProblem();
+</script>
+</body>
+</html>
