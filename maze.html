@@ -214,21 +214,53 @@
   .input:focus { outline: none; border-color: var(--accent); }
 
   .ranking {
-    text-align: left;
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px;
-    margin-top: 10px;
-    max-height: 60vh;
-    overflow-y: auto;
+    text-align: left; background: #fff; border-radius: 14px;
+    padding: 6px; margin-top: 10px; max-height: 60vh; overflow-y: auto;
+  }
+  .ranking ol {
+    margin: 0; padding: 0; list-style: none;
+    counter-reset: rank;
+  }
+  .ranking li {
+    counter-increment: rank;
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 4px 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0e3c0;
     font-size: 17px;
   }
-  .ranking ol { margin: 0; padding-left: 26px; }
-  .ranking li { padding: 10px 0; font-size: 17px; line-height: 1.35; border-bottom: 1px solid #f0e3c0; }
-  .ranking li.mine { background: #fff2d0; border-radius: 10px; padding: 12px 12px; margin: 4px -8px; font-weight: 800; font-size: 19px; }
-  .ranking .name { color: var(--text); }
-  .ranking .meta { color: #7a6244; font-size: 14px; display: block; margin-left: 0; margin-top: 4px; }
-  .ranking .score { float: right; color: var(--accent); font-weight: 800; font-size: 22px; }
+  .ranking li:last-child { border-bottom: none; }
+  .ranking li::before {
+    content: counter(rank) ".";
+    color: #b29a6e; font-weight: 800; font-size: 17px;
+    min-width: 1.6em; text-align: right;
+    flex: 0 0 auto;
+  }
+  .ranking li.mine {
+    background: #fff2d0; border-radius: 10px;
+    font-weight: 800;
+    border-bottom-color: transparent;
+  }
+  .ranking li.mine::before { color: var(--accent); }
+  .ranking .name {
+    order: 1;
+    flex: 1 1 auto;
+    font-size: 18px; color: var(--text);
+    min-width: 0;
+  }
+  .ranking .score {
+    order: 2;
+    flex: 0 0 auto;
+    color: var(--accent); font-weight: 800; font-size: 22px;
+    white-space: nowrap;
+  }
+  .ranking .meta {
+    order: 3;
+    flex: 1 1 100%;
+    color: #7a6244; font-size: 13px;
+    margin-left: 1.8em;
+    margin-top: -2px;
+  }
 
   @media (max-width: 380px) {
     .dpad { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); }
