@@ -1,0 +1,16 @@
+{
+  "name": "동물 농장 놀이터",
+  "short_name": "농장놀이터",
+  "description": "토끼의 미로찾기와 틀린그림찾기 - 1학년을 위한 놀이",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff5e6",
+  "theme_color": "#ff7a59",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

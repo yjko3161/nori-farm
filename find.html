@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>🔍 틀린 그림 찾기 - 동물 농장</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="틀린그림">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<style>
+  :root {
+    --bg1: #fff5e6;
+    --bg2: #ffe4b3;
+    --accent: #ff7a59;
+    --text: #4a3520;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    color: var(--text);
+    min-height: 100vh;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 12px 12px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  h1 { margin: 4px 0 2px; font-size: 22px; text-align: center; color: var(--accent); text-shadow: 2px 2px 0 #fff; }
+  .topnav { width: 100%; display: flex; justify-content: flex-start; }
+  .topnav a {
+    text-decoration: none; color: var(--accent); background: #fff8e9;
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 0 #e9d8b0;
+  }
+  .bar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    background: #fff8e9;
+    padding: 10px 10px;
+    border-radius: 16px;
+    box-shadow: 0 2px 0 #e9d8b0;
+    text-align: center;
+  }
+  .bar .label { font-size: 10px; color: #7a6244; font-weight: 600; }
+  .bar .val { font-size: 16px; color: var(--accent); font-weight: 800; }
+  .bar .val.small { font-size: 14px; color: #555; }
+
+  .scene-name {
+    font-weight: 800; color: var(--accent); font-size: 16px;
+    background: #fff8e9; padding: 6px 14px; border-radius: 12px;
+    box-shadow: 0 2px 0 #e9d8b0;
+  }
+
+  .pics {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pic-wrap {
+    background: #fff8e9;
+    padding: 6px;
+    border-radius: 14px;
+    box-shadow: 0 3px 0 #e9d8b0;
+    position: relative;
+  }
+  .pic-wrap svg { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .pic-label {
+    position: absolute; top: 8px; left: 10px;
+    background: rgba(255,255,255,0.85);
+    color: var(--accent); font-weight: 800; font-size: 12px;
+    padding: 2px 8px; border-radius: 8px;
+  }
+  /* 정답 마크 (찾았다) */
+  .found-mark {
+    fill: none; stroke: #2ec552; stroke-width: 4;
+    animation: pop 0.3s ease-out;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  /* 오답 마크 (X) */
+  .wrong-mark {
+    stroke: #d96363; stroke-width: 4; stroke-linecap: round;
+    animation: shake 0.3s ease;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+  .btn {
+    border: none; background: var(--accent); color: white; font-weight: 700;
+    padding: 10px 16px; border-radius: 12px; box-shadow: 0 3px 0 #c95838;
+    font-size: 15px; cursor: pointer;
+  }
+  .btn.secondary { background: #fff; color: var(--accent); box-shadow: 0 3px 0 #e9d8b0; }
+  .btn.danger { background: #d96363; box-shadow: 0 3px 0 #a14747; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c95838; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; padding: 16px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #fffaf0; padding: 22px; border-radius: 22px;
+    text-align: center; box-shadow: 0 10px 0 #c9a76a;
+    max-width: 340px; width: 100%;
+  }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 22px; }
+  .modal p { margin: 4px 0 12px; font-size: 15px; }
+  .big { font-size: 44px; margin: 4px 0; }
+  .score-big { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; line-height: 1; }
+  .input {
+    width: 100%; border: 2px solid #f0dcae; border-radius: 12px;
+    padding: 10px 12px; font-size: 16px; font-family: inherit;
+    text-align: center; background: #fff; margin: 6px 0; color: var(--text);
+  }
+  .input:focus { outline: none; border-color: var(--accent); }
+  .ranking {
+    text-align: left; background: #fff; border-radius: 12px;
+    padding: 10px 12px; margin-top: 8px; max-height: 220px; overflow-y: auto;
+  }
+  .ranking ol { margin: 0; padding-left: 20px; }
+  .ranking li { padding: 4px 0; font-size: 14px; }
+  .ranking li.mine { background: #fff2d0; border-radius: 6px; padding: 6px 8px; margin: 2px -8px; font-weight: 800; }
+  .ranking .meta { color: #7a6244; font-size: 12px; margin-left: 6px; }
+  .ranking .score { float: right; color: var(--accent); font-weight: 800; }
+
+  @media (max-width: 560px) {
+    .pics { grid-template-columns: 1fr; }
+    h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav"><a href="./">← 메인</a></div>
+  <h1>🔍 틀린 그림 찾기 — 동물 농장</h1>
+
+  <div class="bar">
+    <div><div class="label">레벨</div><div class="val" id="levelNum">1</div></div>
+    <div><div class="label">찾음</div><div class="val" id="found">0/5</div></div>
+    <div><div class="label">실수</div><div class="val small" id="wrong">0</div></div>
+    <div><div class="label">시간</div><div class="val small" id="time">0초</div></div>
+    <div><div class="label">점수</div><div class="val" id="score">0</div></div>
+  </div>
+
+  <div class="scene-name" id="sceneName">…</div>
+
+  <div class="pics">
+    <div class="pic-wrap">
+      <div class="pic-label">A</div>
+      <svg id="svgA" viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="pic-wrap">
+      <div class="pic-label">B</div>
+      <svg id="svgB" viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn secondary" id="hintBtn">💡 힌트 (-30점)</button>
+    <button class="btn secondary" id="muteBtn">🔊 소리</button>
+    <button class="btn danger" id="stopBtn">🛑 그만하기</button>
+  </div>
+
+  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
+    두 그림에서 다른 곳을 5군데 찾아봐요!
+  </p>
+</div>
+
+<!-- 장면 클리어 -->
+<div class="overlay" id="winOverlay">
+  <div class="modal">
+    <div class="big">🎉</div>
+    <h2 id="winTitle">잘 찾았어요!</h2>
+    <p id="winText">…</p>
+    <div class="btnrow" style="margin-top:10px;">
+      <button class="btn" id="winNext">다음 장면 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- 게임 종료 (이름 입력) -->
+<div class="overlay" id="endOverlay">
+  <div class="modal">
+    <div class="big">🏁</div>
+    <h2>게임 종료!</h2>
+    <p id="endSummary">…</p>
+    <div class="score-big" id="endScore">0</div>
+    <p>이름을 적어줘! (랭킹에 올라가요)</p>
+    <input class="input" id="nameInput" maxlength="8" placeholder="예: 토끼1" />
+    <div class="btnrow">
+      <button class="btn" id="saveScoreBtn">랭킹에 올리기 🏆</button>
+    </div>
+  </div>
+</div>
+
+<!-- 랭킹 -->
+<div class="overlay" id="rankOverlay">
+  <div class="modal">
+    <div class="big">🏆</div>
+    <h2>틀린그림 랭킹 TOP 10</h2>
+    <div class="ranking" id="rankingList"></div>
+    <div class="btnrow" style="margin-top:12px;">
+      <button class="btn secondary" id="rankClearBtn">랭킹 초기화</button>
+      <button class="btn" id="rankRestartBtn">다시 도전 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 효과음 =====
+let audioCtx = null;
+let muted = false;
+try { muted = localStorage.getItem("find_muted") === "1"; } catch {}
+function ensureAudio() {
+  if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type = "sine", gain = 0.15, when = 0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const osc = ctx.createOscillator(); const g = ctx.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+function sweep(f1, f2, dur, type = "sine", gain = 0.15, when = 0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const osc = ctx.createOscillator(); const g = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f1, t0);
+  osc.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  found() { tone(880, 0.1, "triangle", 0.18, 0); tone(1175, 0.15, "triangle", 0.18, 0.08); },
+  wrong() { sweep(300, 150, 0.18, "square", 0.12); },
+  clear() {
+    tone(523, 0.12, "triangle", 0.18, 0);
+    tone(659, 0.12, "triangle", 0.18, 0.12);
+    tone(784, 0.12, "triangle", 0.18, 0.24);
+    tone(1046, 0.25, "triangle", 0.2, 0.36);
+  },
+  gameover() { tone(440, 0.2, "triangle", 0.15, 0); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
+};
+
+// ===== 장면 데이터 =====
+// 공통: viewBox 200x150
+// 각 장면은 base(공통 SVG) + diffs(차이 영역들)
+// diff.area: 클릭 가능 영역 {x,y,w,h}
+// diff.left, diff.right: 각각의 SVG 조각 (좌/우 그림에 들어갈 다른 모양)
+const SCENES = [
+  {
+    name: "🚜 빨간 헛간",
+    base: `
+      <!-- 하늘 -->
+      <rect x="0" y="0" width="200" height="100" fill="#bce3f0"/>
+      <!-- 땅 -->
+      <rect x="0" y="100" width="200" height="50" fill="#a8d088"/>
+      <!-- 길 -->
+      <path d="M0,140 Q100,120 200,140 L200,150 L0,150 Z" fill="#c7a875"/>
+      <!-- 헛간 본체 -->
+      <rect x="90" y="70" width="70" height="50" fill="#c94a3b"/>
+      <polygon points="90,70 125,45 160,70" fill="#a13225"/>
+      <!-- 헛간 창문 -->
+      <rect x="100" y="80" width="14" height="14" fill="#fff5cc"/>
+      <line x1="107" y1="80" x2="107" y2="94" stroke="#7a5a30"/>
+      <line x1="100" y1="87" x2="114" y2="87" stroke="#7a5a30"/>
+      <!-- 나무 줄기 -->
+      <rect x="32" y="85" width="8" height="35" fill="#7a5236"/>
+    `,
+    diffs: [
+      // 1. 태양 광선
+      {
+        id: "sun",
+        area: { x: 160, y: 8, w: 36, h: 36 },
+        left:  `<circle cx="178" cy="26" r="14" fill="#ffd54a"/>`,
+        right: `<g>
+          <circle cx="178" cy="26" r="14" fill="#ffd54a"/>
+          <g stroke="#ffb700" stroke-width="2" stroke-linecap="round">
+            <line x1="178" y1="4" x2="178" y2="10"/>
+            <line x1="178" y1="42" x2="178" y2="48"/>
+            <line x1="156" y1="26" x2="162" y2="26"/>
+            <line x1="194" y1="26" x2="200" y2="26"/>
+          </g>
+        </g>`,
+      },
+      // 2. 나뭇잎 색 (초록 / 노란)
+      {
+        id: "leaves",
+        area: { x: 14, y: 60, w: 50, h: 35 },
+        left:  `<circle cx="36" cy="78" r="22" fill="#5c9c4a"/>`,
+        right: `<circle cx="36" cy="78" r="22" fill="#c89a3a"/>`,
+      },
+      // 3. 헛간 문 색
+      {
+        id: "door",
+        area: { x: 115, y: 92, w: 22, h: 30 },
+        left:  `<rect x="118" y="94" width="14" height="26" fill="#7a5236"/>`,
+        right: `<rect x="118" y="94" width="14" height="26" fill="#4a6fa3"/>`,
+      },
+      // 4. 닭 개수 (1 / 2)
+      {
+        id: "chickens",
+        area: { x: 50, y: 110, w: 50, h: 30 },
+        left:  `<g>
+          <ellipse cx="65" cy="125" rx="7" ry="6" fill="#fff"/>
+          <circle cx="70" cy="120" r="4" fill="#fff"/>
+          <polygon points="74,120 78,121 74,122" fill="#ff9933"/>
+          <circle cx="72" cy="119" r="0.7" fill="#000"/>
+          <line x1="62" y1="131" x2="62" y2="135" stroke="#ff9933"/>
+          <line x1="67" y1="131" x2="67" y2="135" stroke="#ff9933"/>
+        </g>`,
+        right: `<g>
+          <ellipse cx="65" cy="125" rx="7" ry="6" fill="#fff"/>
+          <circle cx="70" cy="120" r="4" fill="#fff"/>
+          <polygon points="74,120 78,121 74,122" fill="#ff9933"/>
+          <circle cx="72" cy="119" r="0.7" fill="#000"/>
+          <line x1="62" y1="131" x2="62" y2="135" stroke="#ff9933"/>
+          <line x1="67" y1="131" x2="67" y2="135" stroke="#ff9933"/>
+          <ellipse cx="85" cy="127" rx="6" ry="5" fill="#fff"/>
+          <circle cx="89" cy="123" r="3.5" fill="#fff"/>
+          <polygon points="92,123 95,124 92,125" fill="#ff9933"/>
+          <circle cx="91" cy="122" r="0.6" fill="#000"/>
+          <line x1="83" y1="131" x2="83" y2="134" stroke="#ff9933"/>
+          <line x1="87" y1="131" x2="87" y2="134" stroke="#ff9933"/>
+        </g>`,
+      },
+      // 5. 헛간 옆 꽃
+      {
+        id: "flower",
+        area: { x: 160, y: 105, w: 30, h: 25 },
+        left:  ``,
+        right: `<g transform="translate(173,118)">
+          <line x1="0" y1="0" x2="0" y2="10" stroke="#3a8a3a" stroke-width="2"/>
+          <circle cx="-3" cy="-1" r="2.5" fill="#ff7aa2"/>
+          <circle cx="3" cy="-1" r="2.5" fill="#ff7aa2"/>
+          <circle cx="0" cy="-4" r="2.5" fill="#ff7aa2"/>
+          <circle cx="0" cy="2" r="2.5" fill="#ff7aa2"/>
+          <circle cx="0" cy="-1" r="1.8" fill="#ffd400"/>
+        </g>`,
+      },
+      // 6. 새 (하늘)
+      {
+        id: "bird",
+        area: { x: 80, y: 18, w: 40, h: 22 },
+        left:  ``,
+        right: `<g stroke="#333" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M85,30 Q92,24 99,30"/>
+          <path d="M99,30 Q106,24 113,30"/>
+        </g>`,
+      },
+      // 7. 구름
+      {
+        id: "cloud",
+        area: { x: 0, y: 8, w: 70, h: 28 },
+        left:  `<g fill="#fff">
+          <ellipse cx="30" cy="22" rx="18" ry="9"/>
+          <ellipse cx="18" cy="24" rx="10" ry="6"/>
+        </g>`,
+        right: `<g fill="#fff">
+          <ellipse cx="30" cy="22" rx="22" ry="11"/>
+          <ellipse cx="14" cy="24" rx="12" ry="7"/>
+          <ellipse cx="46" cy="24" rx="11" ry="6"/>
+        </g>`,
+      },
+    ],
+  },
+
+  {
+    name: "🥕 토끼의 텃밭",
+    base: `
+      <!-- 하늘 -->
+      <rect x="0" y="0" width="200" height="80" fill="#bce3f0"/>
+      <!-- 흙밭 -->
+      <rect x="0" y="80" width="200" height="70" fill="#8b6238"/>
+      <rect x="0" y="80" width="200" height="6" fill="#6b4a26"/>
+      <!-- 멀리 산 -->
+      <polygon points="0,80 40,55 80,80" fill="#7ab07f"/>
+      <polygon points="60,80 110,48 160,80" fill="#6ca073"/>
+    `,
+    diffs: [
+      // 1. 당근 개수 (3 / 4)
+      {
+        id: "carrots",
+        area: { x: 15, y: 88, w: 110, h: 50 },
+        left:  `<g>
+          ${[25, 60, 95].map((cx) => `
+            <g transform="translate(${cx},100)">
+              <polygon points="0,0 -5,18 5,18" fill="#ff7a30"/>
+              <line x1="-2" y1="3" x2="-2" y2="14" stroke="#fff5d0" stroke-width="0.8"/>
+              <line x1="2" y1="3" x2="2" y2="14" stroke="#fff5d0" stroke-width="0.8"/>
+              <path d="M-3,-2 L-1,-10 M0,-2 L0,-12 M3,-2 L1,-10" stroke="#3a8a3a" stroke-width="2" fill="none"/>
+            </g>`).join('')}
+        </g>`,
+        right: `<g>
+          ${[20, 50, 80, 110].map((cx) => `
+            <g transform="translate(${cx},100)">
+              <polygon points="0,0 -5,18 5,18" fill="#ff7a30"/>
+              <line x1="-2" y1="3" x2="-2" y2="14" stroke="#fff5d0" stroke-width="0.8"/>
+              <line x1="2" y1="3" x2="2" y2="14" stroke="#fff5d0" stroke-width="0.8"/>
+              <path d="M-3,-2 L-1,-10 M0,-2 L0,-12 M3,-2 L1,-10" stroke="#3a8a3a" stroke-width="2" fill="none"/>
+            </g>`).join('')}
+        </g>`,
+      },
+      // 2. 토끼 색
+      {
+        id: "rabbit",
+        area: { x: 138, y: 80, w: 56, h: 60 },
+        left:  `<g transform="translate(165,115)">
+          <ellipse cx="0" cy="0" rx="14" ry="10" fill="#fff"/>
+          <circle cx="-10" cy="-6" r="8" fill="#fff"/>
+          <ellipse cx="-12" cy="-15" rx="2.5" ry="7" fill="#fff" transform="rotate(-15 -12 -15)"/>
+          <ellipse cx="-8" cy="-15" rx="2.5" ry="7" fill="#fff" transform="rotate(10 -8 -15)"/>
+          <circle cx="-13" cy="-7" r="0.9" fill="#000"/>
+          <circle cx="14" cy="-1" r="2" fill="#fff"/>
+        </g>`,
+        right: `<g transform="translate(165,115)">
+          <ellipse cx="0" cy="0" rx="14" ry="10" fill="#d8d8d8"/>
+          <circle cx="-10" cy="-6" r="8" fill="#d8d8d8"/>
+          <ellipse cx="-12" cy="-15" rx="2.5" ry="7" fill="#d8d8d8" transform="rotate(-15 -12 -15)"/>
+          <ellipse cx="-8" cy="-15" rx="2.5" ry="7" fill="#d8d8d8" transform="rotate(10 -8 -15)"/>
+          <circle cx="-13" cy="-7" r="0.9" fill="#000"/>
+          <circle cx="14" cy="-1" r="2" fill="#d8d8d8"/>
+        </g>`,
+      },
+      // 3. 태양 / 구름
+      {
+        id: "sky",
+        area: { x: 145, y: 5, w: 50, h: 40 },
+        left:  `<circle cx="170" cy="22" r="14" fill="#ffd54a"/>`,
+        right: `<g fill="#fff">
+          <ellipse cx="170" cy="22" rx="20" ry="10"/>
+          <ellipse cx="158" cy="24" rx="10" ry="6"/>
+          <ellipse cx="183" cy="24" rx="10" ry="6"/>
+        </g>`,
+      },
+      // 4. 나비
+      {
+        id: "butterfly",
+        area: { x: 50, y: 30, w: 40, h: 30 },
+        left:  ``,
+        right: `<g transform="translate(70,45)">
+          <ellipse cx="-5" cy="0" rx="5" ry="7" fill="#ff7aa2"/>
+          <ellipse cx="5" cy="0" rx="5" ry="7" fill="#ff7aa2"/>
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#333" stroke-width="1.5"/>
+          <line x1="0" y1="-4" x2="-2" y2="-8" stroke="#333" stroke-width="1"/>
+          <line x1="0" y1="-4" x2="2" y2="-8" stroke="#333" stroke-width="1"/>
+        </g>`,
+      },
+      // 5. 새
+      {
+        id: "bird",
+        area: { x: 5, y: 20, w: 50, h: 25 },
+        left:  `<g stroke="#333" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M10,32 Q18,26 26,32"/>
+        </g>`,
+        right: `<g stroke="#333" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M10,32 Q18,26 26,32"/>
+          <path d="M30,38 Q38,32 46,38"/>
+        </g>`,
+      },
+      // 6. 양동이
+      {
+        id: "bucket",
+        area: { x: 100, y: 125, w: 40, h: 25 },
+        left:  `<g transform="translate(120,140)">
+          <path d="M-10,0 L-8,12 L8,12 L10,0 Z" fill="#888"/>
+          <ellipse cx="0" cy="0" rx="10" ry="2.5" fill="#aaa"/>
+          <path d="M-9,0 Q0,-7 9,0" stroke="#888" stroke-width="1.2" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(120,140)">
+          <path d="M-10,0 L-8,12 L8,12 L10,0 Z" fill="#d96363"/>
+          <ellipse cx="0" cy="0" rx="10" ry="2.5" fill="#e88c8c"/>
+          <path d="M-9,0 Q0,-7 9,0" stroke="#d96363" stroke-width="1.2" fill="none"/>
+        </g>`,
+      },
+      // 7. 무지개 / 없음
+      {
+        id: "rainbow",
+        area: { x: 0, y: 0, w: 100, h: 30 },
+        left:  ``,
+        right: `<g fill="none" stroke-width="2.5">
+          <path d="M5,28 A45,40 0 0 1 95,28" stroke="#ff5252"/>
+          <path d="M9,28 A41,36 0 0 1 91,28" stroke="#ffb742"/>
+          <path d="M13,28 A37,32 0 0 1 87,28" stroke="#ffd54a"/>
+          <path d="M17,28 A33,28 0 0 1 83,28" stroke="#6abf69"/>
+        </g>`,
+      },
+    ],
+  },
+
+  {
+    name: "🦆 오리 연못",
+    base: `
+      <!-- 하늘 -->
+      <rect x="0" y="0" width="200" height="70" fill="#bce3f0"/>
+      <!-- 풀밭 -->
+      <rect x="0" y="60" width="200" height="20" fill="#a8d088"/>
+      <!-- 연못 물 -->
+      <ellipse cx="100" cy="105" rx="95" ry="45" fill="#5fb6d4"/>
+      <ellipse cx="100" cy="100" rx="95" ry="42" fill="#7ec6df"/>
+      <!-- 물결 -->
+      <path d="M30,115 Q40,112 50,115" stroke="#aee0ee" stroke-width="1.5" fill="none"/>
+      <path d="M140,120 Q150,117 160,120" stroke="#aee0ee" stroke-width="1.5" fill="none"/>
+    `,
+    diffs: [
+      // 1. 오리 색 (노랑 / 흰)
+      {
+        id: "duck",
+        area: { x: 60, y: 80, w: 50, h: 40 },
+        left:  `<g transform="translate(85,100)">
+          <ellipse cx="0" cy="0" rx="14" ry="9" fill="#ffd54a"/>
+          <circle cx="-12" cy="-6" r="7" fill="#ffd54a"/>
+          <polygon points="-18,-5 -23,-3 -18,-1" fill="#ff9933"/>
+          <circle cx="-13" cy="-7" r="0.9" fill="#000"/>
+          <path d="M14,0 L18,-3 L18,3 Z" fill="#ffd54a"/>
+        </g>`,
+        right: `<g transform="translate(85,100)">
+          <ellipse cx="0" cy="0" rx="14" ry="9" fill="#fff"/>
+          <circle cx="-12" cy="-6" r="7" fill="#fff"/>
+          <polygon points="-18,-5 -23,-3 -18,-1" fill="#ff9933"/>
+          <circle cx="-13" cy="-7" r="0.9" fill="#000"/>
+          <path d="M14,0 L18,-3 L18,3 Z" fill="#fff"/>
+        </g>`,
+      },
+      // 2. 수련잎 개수
+      {
+        id: "lily",
+        area: { x: 110, y: 95, w: 80, h: 35 },
+        left:  `<g>
+          <ellipse cx="135" cy="115" rx="14" ry="6" fill="#3a7a45"/>
+          <path d="M135,115 L122,114" stroke="#2a5a35" stroke-width="1"/>
+          <ellipse cx="170" cy="120" rx="12" ry="5" fill="#3a7a45"/>
+        </g>`,
+        right: `<g>
+          <ellipse cx="135" cy="115" rx="14" ry="6" fill="#3a7a45"/>
+          <path d="M135,115 L122,114" stroke="#2a5a35" stroke-width="1"/>
+          <ellipse cx="170" cy="120" rx="12" ry="5" fill="#3a7a45"/>
+          <ellipse cx="155" cy="103" rx="10" ry="4" fill="#3a7a45"/>
+          <ellipse cx="180" cy="105" rx="8" ry="3.5" fill="#3a7a45"/>
+        </g>`,
+      },
+      // 3. 개구리
+      {
+        id: "frog",
+        area: { x: 10, y: 95, w: 40, h: 25 },
+        left:  ``,
+        right: `<g transform="translate(28,110)">
+          <ellipse cx="0" cy="0" rx="10" ry="6" fill="#4caf50"/>
+          <circle cx="-5" cy="-5" r="3.5" fill="#4caf50"/>
+          <circle cx="5" cy="-5" r="3.5" fill="#4caf50"/>
+          <circle cx="-5" cy="-5" r="1.5" fill="#fff"/>
+          <circle cx="5" cy="-5" r="1.5" fill="#fff"/>
+          <circle cx="-5" cy="-5" r="0.7" fill="#000"/>
+          <circle cx="5" cy="-5" r="0.7" fill="#000"/>
+          <path d="M-3,2 Q0,4 3,2" stroke="#2e7d32" stroke-width="1" fill="none"/>
+        </g>`,
+      },
+      // 4. 갈대
+      {
+        id: "reeds",
+        area: { x: 0, y: 45, w: 30, h: 35 },
+        left:  `<g stroke="#7a5236" stroke-width="2" fill="none">
+          <line x1="8" y1="80" x2="8" y2="55"/>
+          <line x1="15" y1="80" x2="15" y2="50"/>
+        </g>
+        <ellipse cx="8" cy="53" rx="2" ry="5" fill="#9b6b3a"/>
+        <ellipse cx="15" cy="48" rx="2" ry="5" fill="#9b6b3a"/>`,
+        right: `<g stroke="#7a5236" stroke-width="2" fill="none">
+          <line x1="6" y1="80" x2="6" y2="55"/>
+          <line x1="13" y1="80" x2="13" y2="50"/>
+          <line x1="20" y1="80" x2="20" y2="52"/>
+        </g>
+        <ellipse cx="6" cy="53" rx="2" ry="5" fill="#9b6b3a"/>
+        <ellipse cx="13" cy="48" rx="2" ry="5" fill="#9b6b3a"/>
+        <ellipse cx="20" cy="50" rx="2" ry="5" fill="#9b6b3a"/>`,
+      },
+      // 5. 물고기 점프
+      {
+        id: "fish",
+        area: { x: 130, y: 65, w: 50, h: 30 },
+        left:  ``,
+        right: `<g transform="translate(155,82)">
+          <ellipse cx="0" cy="0" rx="7" ry="3.5" fill="#ff7a59"/>
+          <polygon points="6,0 11,-3 11,3" fill="#ff7a59"/>
+          <circle cx="-3" cy="-1" r="0.7" fill="#000"/>
+          <path d="M-12,5 Q-15,10 -10,12" stroke="#aee0ee" stroke-width="1.5" fill="none"/>
+        </g>`,
+      },
+      // 6. 잠자리
+      {
+        id: "dragonfly",
+        area: { x: 60, y: 40, w: 40, h: 25 },
+        left:  ``,
+        right: `<g transform="translate(80,52)">
+          <ellipse cx="0" cy="0" rx="9" ry="1.5" fill="#3aa0c8"/>
+          <ellipse cx="-2" cy="-4" rx="7" ry="2.5" fill="rgba(150,220,240,0.7)"/>
+          <ellipse cx="-2" cy="4" rx="7" ry="2.5" fill="rgba(150,220,240,0.7)"/>
+          <ellipse cx="2" cy="-4" rx="6" ry="2.2" fill="rgba(150,220,240,0.7)"/>
+          <ellipse cx="2" cy="4" rx="6" ry="2.2" fill="rgba(150,220,240,0.7)"/>
+        </g>`,
+      },
+      // 7. 구름 개수
+      {
+        id: "clouds",
+        area: { x: 100, y: 5, w: 95, h: 30 },
+        left:  `<g fill="#fff">
+          <ellipse cx="160" cy="22" rx="16" ry="8"/>
+          <ellipse cx="148" cy="24" rx="8" ry="5"/>
+        </g>`,
+        right: `<g fill="#fff">
+          <ellipse cx="160" cy="22" rx="16" ry="8"/>
+          <ellipse cx="148" cy="24" rx="8" ry="5"/>
+          <ellipse cx="115" cy="14" rx="12" ry="6"/>
+          <ellipse cx="106" cy="17" rx="7" ry="4"/>
+        </g>`,
+      },
+    ],
+  },
+];
+
+// ===== 상태 =====
+let level = 1;
+let sceneOrder = 0;
+let scene = null;
+let activeDiffs = [];  // 이번 라운드 5개
+let foundSet = new Set();  // 찾은 diff id
+let wrongCount = 0;
+let totalWrong = 0;
+let totalScore = 0;
+let totalSeconds = 0;
+let totalLevels = 0;
+let levelStart = 0;
+let timerId = null;
+let usedHint = false;
+
+const $ = (q) => document.querySelector(q);
+
+function pickActiveDiffs(scene) {
+  // 무작위 5개 선택
+  const pool = scene.diffs.slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 5);
+}
+
+function startLevel(n) {
+  level = n;
+  scene = SCENES[(n - 1) % SCENES.length];
+  activeDiffs = pickActiveDiffs(scene);
+  // 각 diff 마다 50% 확률로 좌/우 변형 스왑 (같은 장면이라도 다른 퍼즐)
+  activeDiffs = activeDiffs.map(d => Math.random() < 0.5 ? d : { ...d, left: d.right, right: d.left });
+  foundSet = new Set();
+  wrongCount = 0;
+  usedHint = false;
+  levelStart = Date.now();
+  $("#sceneName").textContent = scene.name;
+  $("#levelNum").textContent = n;
+  $("#found").textContent = `0/${activeDiffs.length}`;
+  $("#wrong").textContent = "0";
+  $("#time").textContent = "0초";
+  renderScene();
+  if (!timerId) {
+    timerId = setInterval(() => {
+      const s = Math.floor((Date.now() - levelStart) / 1000);
+      $("#time").textContent = s + "초";
+    }, 250);
+  }
+}
+
+function renderScene() {
+  const A = $("#svgA"), B = $("#svgB");
+  const aFrag = scene.base + activeDiffs.map(d => d.left).join("");
+  const bFrag = scene.base + activeDiffs.map(d => d.right).join("");
+  A.innerHTML = aFrag + clickOverlay(activeDiffs);
+  B.innerHTML = bFrag + clickOverlay(activeDiffs);
+  // 이벤트 위임: 클릭된 요소 또는 부모 중 data-diff 있는지 확인
+  [A, B].forEach((svg) => {
+    svg.addEventListener("click", (e) => {
+      let el = e.target;
+      while (el && el !== svg && !(el.dataset && el.dataset.diff)) {
+        el = el.parentElement;
+      }
+      if (el && el !== svg && el.dataset && el.dataset.diff) {
+        handleClick(el.dataset.diff);
+      } else {
+        handleMiss(svg, e);
+      }
+    });
+  });
+  foundSet.forEach((id) => markFound(id));
+}
+
+function clickOverlay(diffs) {
+  // 투명한 사각형들 — 클릭 잡이용
+  return diffs.map(d =>
+    `<rect data-diff="${d.id}"
+      x="${d.area.x}" y="${d.area.y}" width="${d.area.w}" height="${d.area.h}"
+      fill="transparent" style="cursor:pointer"/>`
+  ).join("");
+}
+
+function handleClick(diffId) {
+  if (foundSet.has(diffId)) return;
+  foundSet.add(diffId);
+  sfx.found();
+  markFound(diffId);
+  $("#found").textContent = `${foundSet.size}/${activeDiffs.length}`;
+  if (foundSet.size === activeDiffs.length) winLevel();
+}
+
+function markFound(diffId) {
+  const d = activeDiffs.find(x => x.id === diffId);
+  if (!d) return;
+  const cx = d.area.x + d.area.w / 2;
+  const cy = d.area.y + d.area.h / 2;
+  const r = Math.max(d.area.w, d.area.h) / 2;
+  ["#svgA", "#svgB"].forEach(sel => {
+    const svg = $(sel);
+    const ns = "http://www.w3.org/2000/svg";
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", r);
+    c.setAttribute("class", "found-mark");
+    svg.appendChild(c);
+  });
+}
+
+function handleMiss(svg, e) {
+  wrongCount++;
+  totalWrong++;
+  $("#wrong").textContent = wrongCount;
+  sfx.wrong();
+  // 클릭한 위치에 X 표시
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "wrong-mark");
+  const sz = 6;
+  const l1 = document.createElementNS(ns, "line");
+  l1.setAttribute("x1", loc.x - sz); l1.setAttribute("y1", loc.y - sz);
+  l1.setAttribute("x2", loc.x + sz); l1.setAttribute("y2", loc.y + sz);
+  l1.setAttribute("stroke", "#d96363"); l1.setAttribute("stroke-width", "3");
+  l1.setAttribute("stroke-linecap", "round");
+  const l2 = document.createElementNS(ns, "line");
+  l2.setAttribute("x1", loc.x - sz); l2.setAttribute("y1", loc.y + sz);
+  l2.setAttribute("x2", loc.x + sz); l2.setAttribute("y2", loc.y - sz);
+  l2.setAttribute("stroke", "#d96363"); l2.setAttribute("stroke-width", "3");
+  l2.setAttribute("stroke-linecap", "round");
+  g.appendChild(l1); g.appendChild(l2);
+  svg.appendChild(g);
+  setTimeout(() => g.remove(), 600);
+}
+
+function winLevel() {
+  const sec = Math.max(1, Math.round((Date.now() - levelStart) / 1000));
+  totalLevels++;
+  totalSeconds += sec;
+  const base = 100 + level * 20;
+  const speedBonus = Math.max(0, 90 - sec);
+  const wrongPenalty = wrongCount * 10;
+  const hintPenalty = usedHint ? 30 : 0;
+  const gain = Math.max(10, base + speedBonus - wrongPenalty - hintPenalty);
+  totalScore += gain;
+  $("#score").textContent = totalScore;
+  sfx.clear();
+  $("#winTitle").textContent = `레벨 ${level} 통과!`;
+  $("#winText").textContent =
+    `${sec}초 · 실수 ${wrongCount}번` + (usedHint ? " · 힌트 사용" : "") + ` · +${gain}점`;
+  $("#winOverlay").classList.add("show");
+}
+
+function nextLevel() {
+  $("#winOverlay").classList.remove("show");
+  startLevel(level + 1);
+}
+
+// 힌트: 못 찾은 것 중 하나 잠깐 깜빡
+function showHint() {
+  if (usedHint) return;
+  usedHint = true;
+  totalScore = Math.max(0, totalScore - 30);
+  $("#score").textContent = totalScore;
+  const remaining = activeDiffs.filter(d => !foundSet.has(d.id));
+  if (remaining.length === 0) return;
+  const d = remaining[Math.floor(Math.random() * remaining.length)];
+  const cx = d.area.x + d.area.w / 2;
+  const cy = d.area.y + d.area.h / 2;
+  const r = Math.max(d.area.w, d.area.h) / 2 + 2;
+  ["#svgA", "#svgB"].forEach(sel => {
+    const svg = $(sel);
+    const ns = "http://www.w3.org/2000/svg";
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", r);
+    c.setAttribute("fill", "none");
+    c.setAttribute("stroke", "#ffb700");
+    c.setAttribute("stroke-width", "3");
+    c.setAttribute("stroke-dasharray", "4 3");
+    svg.appendChild(c);
+    setTimeout(() => c.remove(), 2000);
+  });
+}
+
+// ===== 게임 종료 / 랭킹 =====
+const RANK_KEY = "find_rank_v1";
+const NAME_KEY = "find_last_name";
+function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch { return []; } }
+function saveRanking(arr) { try { localStorage.setItem(RANK_KEY, JSON.stringify(arr)); } catch {} }
+
+function endGame() {
+  sfx.gameover();
+  $("#endSummary").textContent =
+    `레벨 ${level}까지 · 클리어 ${totalLevels}장면 · 실수 ${totalWrong}번 · ${totalSeconds}초`;
+  $("#endScore").textContent = totalScore;
+  let last = "";
+  try { last = localStorage.getItem(NAME_KEY) || ""; } catch {}
+  $("#nameInput").value = last;
+  $("#endOverlay").classList.add("show");
+  setTimeout(() => $("#nameInput").focus(), 100);
+}
+
+let lastSavedEntryId = null;
+
+async function postServerRanking(entry) {
+  try {
+    const r = await fetch("/api/ranking/find", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
+}
+async function fetchServerRanking() {
+  try {
+    const r = await fetch("/api/ranking/find", { cache: "no-store" });
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
+}
+
+async function saveScore() {
+  const name = ($("#nameInput").value || "").trim().slice(0, 8) || "토끼";
+  try { localStorage.setItem(NAME_KEY, name); } catch {}
+  const entry = {
+    id: Date.now() + Math.random(),
+    name, score: totalScore,
+    level, cleared: totalLevels, wrong: totalWrong, seconds: totalSeconds,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const localList = loadRanking();
+  localList.push(entry);
+  localList.sort((a, b) => b.score - a.score);
+  saveRanking(localList.slice(0, 10));
+  lastSavedEntryId = entry.id;
+  await postServerRanking(entry);
+  $("#endOverlay").classList.remove("show");
+  showRanking();
+}
+
+async function showRanking() {
+  const list = $("#rankingList");
+  list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">불러오는 중…</p>';
+  $("#rankOverlay").classList.add("show");
+
+  const server = await fetchServerRanking();
+  const ranking = server !== null ? server : loadRanking();
+  const source = server !== null ? "🌐 가족 공용" : "📱 이 기기만";
+
+  if (ranking.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">아직 기록이 없어요</p>';
+  } else {
+    const ol = document.createElement("ol");
+    ranking.forEach((e) => {
+      const li = document.createElement("li");
+      if (e.id === lastSavedEntryId) li.className = "mine";
+      li.innerHTML = `
+        <span>${escapeHtml(e.name)}</span>
+        <span class="meta">${e.cleared}장면 · 실수${e.wrong} · ${e.seconds}초 · ${e.date}</span>
+        <span class="score">${e.score}점</span>
+      `;
+      ol.appendChild(li);
+    });
+    list.innerHTML = `<p style="text-align:center; color:#7a6244; font-size:12px; margin:0 0 6px;">${source}</p>`;
+    list.appendChild(ol);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function restartGame() {
+  $("#rankOverlay").classList.remove("show");
+  level = 1; totalScore = 0; totalSeconds = 0; totalLevels = 0; totalWrong = 0;
+  $("#score").textContent = "0";
+  startLevel(1);
+}
+
+// 이벤트
+$("#stopBtn").onclick = () => endGame();
+$("#winNext").onclick = () => nextLevel();
+$("#hintBtn").onclick = () => showHint();
+$("#saveScoreBtn").onclick = () => saveScore();
+$("#rankRestartBtn").onclick = () => restartGame();
+$("#rankClearBtn").onclick = async () => {
+  if (!confirm("가족 공용 랭킹까지 모두 지울까요? (되돌릴 수 없어요)")) return;
+  saveRanking([]);
+  try { await fetch("/api/ranking/find", { method: "DELETE" }); } catch {}
+  showRanking();
+};
+
+// 음소거
+const muteBtn = $("#muteBtn");
+function refreshMuteBtn() { muteBtn.textContent = muted ? "🔇 소리" : "🔊 소리"; }
+refreshMuteBtn();
+muteBtn.onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem("find_muted", muted ? "1" : "0"); } catch {}
+  refreshMuteBtn();
+  if (!muted) { ensureAudio(); sfx.found(); }
+};
+function wakeAudioOnce() {
+  ensureAudio();
+  window.removeEventListener("pointerdown", wakeAudioOnce);
+}
+window.addEventListener("pointerdown", wakeAudioOnce);
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+startLevel(1);
+</script>
+</body>
+</html>
