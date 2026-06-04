@@ -17,3 +17,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 node_modules/
+
+# 내부 문서 (인프라 정보 포함 - public repo에 올리지 않음)
+HANDOVER.md
