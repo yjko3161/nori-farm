@@ -1,7 +1,7 @@
 // 서비스 워커 - 오프라인 캐시
 // 리다이렉트된 응답을 그대로 캐시하면 PWA 탐색에서 브라우저가 거부함 (흰화면 원인).
 // → 받은 응답을 깨끗한 Response 로 재포장해서 저장.
-const CACHE = "miro-v5";
+const CACHE = "miro-v6";
 const ASSETS = [
   "./",
   "./index.html",

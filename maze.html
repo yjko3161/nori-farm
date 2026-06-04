@@ -191,7 +191,7 @@
     max-width: 340px;
     width: 100%;
   }
-  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 22px; }
+  .modal h2 { margin: 0 0 10px; color: var(--accent); font-size: 26px; }
   .modal p { margin: 4px 0 12px; font-size: 15px; }
   .big { font-size: 44px; margin: 4px 0; }
   .stars { font-size: 28px; letter-spacing: 4px; }
@@ -217,17 +217,18 @@
     text-align: left;
     background: #fff;
     border-radius: 12px;
-    padding: 10px 12px;
-    margin-top: 8px;
-    max-height: 220px;
+    padding: 12px;
+    margin-top: 10px;
+    max-height: 60vh;
     overflow-y: auto;
+    font-size: 17px;
   }
-  .ranking ol { margin: 0; padding-left: 20px; }
-  .ranking li { padding: 4px 0; font-size: 14px; }
-  .ranking li.mine { background: #fff2d0; border-radius: 6px; padding: 6px 8px; margin: 2px -8px; font-weight: 800; }
+  .ranking ol { margin: 0; padding-left: 26px; }
+  .ranking li { padding: 10px 0; font-size: 17px; line-height: 1.35; border-bottom: 1px solid #f0e3c0; }
+  .ranking li.mine { background: #fff2d0; border-radius: 10px; padding: 12px 12px; margin: 4px -8px; font-weight: 800; font-size: 19px; }
   .ranking .name { color: var(--text); }
-  .ranking .meta { color: #7a6244; font-size: 12px; margin-left: 6px; }
-  .ranking .score { float: right; color: var(--accent); font-weight: 800; }
+  .ranking .meta { color: #7a6244; font-size: 14px; display: block; margin-left: 0; margin-top: 4px; }
+  .ranking .score { float: right; color: var(--accent); font-weight: 800; font-size: 22px; }
 
   @media (max-width: 380px) {
     .dpad { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); }
@@ -320,7 +321,6 @@
     <h2>명예의 전당 TOP 10</h2>
     <div class="ranking" id="rankingList"></div>
     <div class="btnrow" style="margin-top:12px;">
-      <button class="btn secondary" id="rankClearBtn">랭킹 초기화</button>
       <button class="btn" id="rankRestartBtn">다시 도전 🔄</button>
     </div>
   </div>
@@ -694,12 +694,6 @@ $("#stopBtn").onclick = () => endGame();
 $("#winNext").onclick = () => nextLevel();
 $("#saveScoreBtn").onclick = () => saveScore();
 $("#rankRestartBtn").onclick = () => restartGame();
-$("#rankClearBtn").onclick = async () => {
-  if (!confirm("가족 공용 랭킹까지 모두 지울까요? (되돌릴 수 없어요)")) return;
-  saveRanking([]);
-  try { await fetch("/api/ranking/maze", { method: "DELETE" }); } catch {}
-  showRanking();
-};
 
 // 음소거
 const muteBtn = $("#muteBtn");
