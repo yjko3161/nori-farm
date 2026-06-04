@@ -67,6 +67,30 @@
   }
   .game-info p { margin: 0; font-size: 14px; color: #7a6244; line-height: 1.4; }
   .footer { font-size: 12px; color: #7a6244; margin-top: 20px; text-align: center; }
+
+  /* === 광고 자리 === */
+  .ad-banner {
+    width: 100%;
+    min-height: 90px;
+    background: #fff;
+    border: 2px dashed #e9d8b0;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    color: #b29a6e;
+    font-size: 13px;
+    margin-top: 16px;
+    padding: 12px;
+    position: relative;
+  }
+  .ad-banner::before {
+    content: "광고 AD";
+    position: absolute; top: 6px; left: 8px;
+    font-size: 10px; color: #b29a6e; font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .ad-banner .demo-msg { font-weight: 600; }
+  .ad-banner .demo-sub { font-size: 11px; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -90,6 +114,41 @@
         <p>두 그림에서 다른 곳을 찾아봐요. 동물 농장 장면 + 랭킹</p>
       </div>
     </a>
+  </div>
+
+  <!--
+    ===== 광고 자리 (AdSense 통합 가이드) =====
+    1. AdSense 가입: https://www.google.com/adsense/start/
+       - 사이트 소유 확인 (도메인 추가)
+       - 심사 통과 (며칠~몇 주, 아동 사이트는 거절될 수 있음)
+    2. 승인되면 받는 Publisher ID: ca-pub-XXXXXXXXXXXXXXXX
+    3. 광고 단위(Ad Unit) 만들면 받는 Slot ID: 숫자 10자리
+    4. 아래 head 영역에 스크립트 한 번 (전체 페이지 공용):
+
+       <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+               crossorigin="anonymous"></script>
+
+    5. 광고 보여줄 자리에:
+
+       <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+            data-ad-slot="0000000000"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+       <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+
+    6. 자녀(어린이) 대상 사이트인 경우 반드시 추가:
+
+       <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+           tag_for_child_directed_treatment: 1  // COPPA 준수
+         });
+       </script>
+  -->
+  <div class="ad-banner">
+    <div class="demo-msg">광고가 표시될 자리입니다</div>
+    <div class="demo-sub">AdSense 승인 후 코드 채우면 실제 광고가 여기 표시됨</div>
   </div>
 
   <p class="footer">초등학교 1학년을 위한 놀이 모음</p>
