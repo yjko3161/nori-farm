@@ -1,0 +1,18 @@
+name = "nori-farm-api"
+main = "worker/api-worker.js"
+compatibility_date = "2025-01-01"
+
+# KV namespace 바인딩
+# id 값은 Cloudflare 대시보드 → Workers & Pages → KV → nori-farm-rankings
+# 클릭하면 페이지에 "Namespace ID" 로 표시되는 32자리 영문숫자
+kv_namespaces = [
+  { binding = "RANKINGS", id = "PASTE_KV_NAMESPACE_ID_HERE" }
+]
+
+# 도메인 라우트 — www.nori-farm.com/api/ranking/* 만 이 Worker가 처리
+routes = [
+  { pattern = "www.nori-farm.com/api/ranking/*", zone_name = "nori-farm.com" }
+]
+
+# 선택: DELETE 보호 토큰 (배포 후 따로 설정해도 됨)
+# wrangler secret put ADMIN_TOKEN
