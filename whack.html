@@ -29,9 +29,10 @@
     box-shadow: 0 2px 0 #e9d8b0;
   }
   .bar {
-    width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
     background: #fff8e9; padding: 10px; border-radius: 16px; box-shadow: 0 2px 0 #e9d8b0;
     text-align: center;
+    position: relative;
   }
   .bar .label { font-size: 11px; color: #7a6244; font-weight: 600; }
   .bar .val { font-size: 18px; color: var(--accent); font-weight: 800; }
@@ -63,6 +64,45 @@
     background: radial-gradient(ellipse at 50% 35%, #ffcf6e 0%, #ff9933 70%);
     transition: bottom 0.1s, transform 0.15s;
     transform: scale(0.85);
+  }
+  /* 폭탄 두더지 */
+  .mole.bomb {
+    background: radial-gradient(ellipse at 50% 35%, #555 0%, #1a1a1a 70%);
+  }
+  .mole.bomb.hit {
+    background: radial-gradient(ellipse at 50% 35%, #ff4444 0%, #aa0000 70%);
+    animation: bombFlash 0.4s ease-out;
+  }
+  @keyframes bombFlash {
+    0% { transform: scale(1.2); filter: brightness(2); }
+    100% { transform: scale(0.85); filter: brightness(1); }
+  }
+  /* 황금 두더지 */
+  .mole.gold {
+    background: radial-gradient(ellipse at 50% 35%, #fff3a0 0%, #ffb700 70%);
+    box-shadow: 0 0 10px #ffd400, inset 0 -4px 6px rgba(0,0,0,0.2);
+  }
+  .combo-badge {
+    position: absolute; top: 8px; right: 12px;
+    background: var(--accent); color: white;
+    padding: 4px 10px; border-radius: 12px;
+    font-weight: 800; font-size: 14px;
+    box-shadow: 0 2px 0 #c95838;
+    animation: comboPop 0.25s ease-out;
+  }
+  @keyframes comboPop {
+    0% { transform: scale(1.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .float-text {
+    position: absolute; pointer-events: none;
+    font-weight: 800; font-size: 18px;
+    animation: floatUp 0.8s ease-out forwards;
+    z-index: 5;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-40px); opacity: 0; }
   }
   .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
   .btn {
@@ -148,10 +188,11 @@
     <div><div class="label">레벨</div><div class="val" id="levelNum">1</div></div>
     <div><div class="label">남은 시간</div><div class="val small" id="time">20초</div></div>
     <div><div class="label">잡음</div><div class="val small" id="hits">0</div></div>
+    <div><div class="label">콤보</div><div class="val small" id="combo">0</div></div>
     <div><div class="label">점수</div><div class="val" id="score">0</div></div>
   </div>
 
-  <div class="field">
+  <div class="field" style="position:relative;">
     <div class="grid" id="grid"></div>
   </div>
 
@@ -227,21 +268,60 @@ const sfx = {
   pop()  { tone(120, 0.05, "sine", 0.12); },
   hit()  { tone(880, 0.08, "triangle", 0.2); tone(1320, 0.1, "triangle", 0.15, 0.05); },
   miss() { tone(180, 0.15, "square", 0.1); },
+  bomb() { tone(120, 0.08, "square", 0.18); tone(80, 0.25, "sawtooth", 0.2, 0.05); },
+  gold() { tone(1568, 0.08, "triangle", 0.2); tone(1976, 0.1, "triangle", 0.18, 0.06); tone(2349, 0.15, "triangle", 0.18, 0.14); },
+  combo() { tone(1175, 0.05, "triangle", 0.16); tone(1568, 0.08, "triangle", 0.16, 0.04); },
   end()  { tone(880, 0.12, "triangle", 0.18); tone(660, 0.12, "triangle", 0.18, 0.1); tone(440, 0.2, "triangle", 0.18, 0.2); },
   gameover() { tone(440, 0.2, "triangle", 0.15); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
 };
 
 const $ = q => document.querySelector(q);
-const HOLES = 9;
+
 let level = 1, hits = 0, misses = 0, totalScore = 0;
 let roundTime = 20, remaining = 20;
-let timerId = null, moleTimer = null;
-let currentMole = -1, won = false;
+let timerId = null;
+let moleTimers = [];           // 동시 여러 마리 관리
+let activeMoles = new Map();   // idx → { type: 'normal'|'bomb'|'gold', timerId }
+let combo = 0, maxCombo = 0;
+let won = false;
+let currentHoles = 9;          // 레벨별로 9 또는 16
+let currentCols = 3;
+
+// 레벨 → 그리드 크기
+function holesForLevel(n) {
+  return n >= 6 ? 16 : 9;
+}
+function colsForLevel(n) {
+  return n >= 6 ? 4 : 3;
+}
+// 레벨 → 동시 출현 최대 두더지 수
+function maxConcurrentMoles(n) {
+  if (n <= 2) return 1;
+  if (n <= 4) return 2;
+  return 3;
+}
+// 폭탄 등장 확률
+function bombChance(n) {
+  if (n <= 1) return 0;
+  if (n <= 3) return 0.12;
+  if (n <= 5) return 0.18;
+  return 0.22;
+}
+// 황금 등장 확률
+function goldChance(n) {
+  if (n <= 1) return 0.05;
+  return 0.08;
+}
 
 function buildGrid() {
   const g = $("#grid");
   g.innerHTML = "";
-  for (let i = 0; i < HOLES; i++) {
+  currentHoles = holesForLevel(level);
+  currentCols = colsForLevel(level);
+  g.style.gridTemplateColumns = `repeat(${currentCols}, 1fr)`;
+  // 4x4 일 때는 간격 살짝 줄임
+  g.style.gap = currentCols === 4 ? "10px" : "14px";
+  for (let i = 0; i < currentHoles; i++) {
     const h = document.createElement("div");
     h.className = "hole";
     h.dataset.idx = i;
@@ -254,8 +334,14 @@ function buildGrid() {
 function startRound() {
   remaining = roundTime;
   hits = 0;
+  combo = 0; maxCombo = 0;
   won = false;
+  activeMoles.clear();
+  moleTimers.forEach(t => clearTimeout(t));
+  moleTimers = [];
+  buildGrid();
   $("#hits").textContent = "0";
+  $("#combo").textContent = "0";
   $("#time").textContent = remaining + "초";
   $("#levelNum").textContent = level;
   scheduleNextMole();
@@ -268,68 +354,143 @@ function startRound() {
 }
 
 function moleLifeMs() {
-  // 레벨 올라갈수록 짧아짐
-  return Math.max(450, 1200 - (level - 1) * 80);
+  return Math.max(420, 1200 - (level - 1) * 80);
 }
 function moleGapMs() {
-  return Math.max(250, 700 - (level - 1) * 40);
+  return Math.max(220, 700 - (level - 1) * 40);
 }
 
 function scheduleNextMole() {
   if (remaining <= 0 || won) return;
-  clearTimeout(moleTimer);
-  moleTimer = setTimeout(() => {
+  const t = setTimeout(() => {
     showMole();
+    scheduleNextMole();
   }, moleGapMs());
+  moleTimers.push(t);
 }
 
 function showMole() {
   if (remaining <= 0 || won) return;
-  const idx = Math.floor(Math.random() * HOLES);
-  currentMole = idx;
+  if (activeMoles.size >= maxConcurrentMoles(level)) return;
+  // 빈 구멍 중 무작위
+  const empty = [];
+  for (let i = 0; i < currentHoles; i++) if (!activeMoles.has(i)) empty.push(i);
+  if (empty.length === 0) return;
+  const idx = empty[Math.floor(Math.random() * empty.length)];
+
+  // 타입 결정
+  const r = Math.random();
+  let type = "normal";
+  if (r < bombChance(level)) type = "bomb";
+  else if (r < bombChance(level) + goldChance(level)) type = "gold";
+
   const m = document.querySelector(`.mole[data-idx="${idx}"]`);
   if (!m) return;
-  m.classList.remove("hit");
+  m.classList.remove("hit", "bomb", "gold");
+  if (type === "bomb") { m.classList.add("bomb"); m.textContent = "💣"; }
+  else if (type === "gold") { m.classList.add("gold"); m.textContent = "⭐"; }
+  else { m.textContent = "🐿️"; }
   m.classList.add("up");
   sfx.pop();
-  setTimeout(() => {
+
+  // 황금은 짧게, 폭탄은 보통, 일반은 보통
+  const life = type === "gold" ? Math.max(350, moleLifeMs() * 0.65) : moleLifeMs();
+  const hideTimer = setTimeout(() => {
     m.classList.remove("up");
-    if (currentMole === idx) {
-      currentMole = -1;
+    activeMoles.delete(idx);
+    // 황금/일반 놓치면 콤보 끊김
+    if (type === "gold" || type === "normal") {
+      breakCombo();
     }
-    scheduleNextMole();
-  }, moleLifeMs());
+  }, life);
+  activeMoles.set(idx, { type, timerId: hideTimer });
+}
+
+function showFloat(idx, text, color) {
+  const hole = document.querySelector(`.hole[data-idx="${idx}"]`);
+  if (!hole) return;
+  const span = document.createElement("div");
+  span.className = "float-text";
+  span.style.color = color;
+  span.style.left = "50%";
+  span.style.top = "20%";
+  span.style.transform = "translateX(-50%)";
+  span.textContent = text;
+  hole.appendChild(span);
+  setTimeout(() => span.remove(), 800);
+}
+
+function breakCombo() {
+  if (combo > 0) {
+    combo = 0;
+    $("#combo").textContent = "0";
+  }
 }
 
 function onTap(idx) {
   if (won) return;
-  if (idx === currentMole) {
-    hits++;
-    $("#hits").textContent = hits;
-    sfx.hit();
-    const m = document.querySelector(`.mole[data-idx="${idx}"]`);
-    if (m) {
-      m.classList.add("hit");
-      setTimeout(() => m.classList.remove("up"), 80);
-    }
-    currentMole = -1;
-  } else {
+  const info = activeMoles.get(idx);
+  if (!info) {
+    // 빈 구멍 — 콤보 깨짐
     misses++;
     sfx.miss();
+    breakCombo();
+    return;
   }
+  const m = document.querySelector(`.mole[data-idx="${idx}"]`);
+  clearTimeout(info.timerId);
+  activeMoles.delete(idx);
+
+  if (info.type === "bomb") {
+    // 폭탄: 점수 -15, 콤보 끊김
+    totalScore = Math.max(0, totalScore - 15);
+    $("#score").textContent = totalScore;
+    if (m) { m.classList.add("hit"); setTimeout(() => m.classList.remove("up", "hit", "bomb"), 400); }
+    sfx.bomb();
+    showFloat(idx, "-15", "#d96363");
+    breakCombo();
+    return;
+  }
+
+  // 일반 또는 황금 — 콤보 +1
+  combo++;
+  if (combo > maxCombo) maxCombo = combo;
+  $("#combo").textContent = combo;
+
+  let base = info.type === "gold" ? 50 : 10;
+  // 콤보 배수: 3콤보부터 1.5×, 5콤보부터 2×
+  let mult = 1;
+  if (combo >= 5) mult = 2;
+  else if (combo >= 3) mult = 1.5;
+  const gained = Math.round(base * mult);
+  totalScore += gained;
+  hits++;
+  $("#hits").textContent = hits;
+  $("#score").textContent = totalScore;
+  if (m) {
+    m.classList.add("hit");
+    setTimeout(() => m.classList.remove("up", "hit", "gold"), 150);
+  }
+  if (info.type === "gold") sfx.gold(); else sfx.hit();
+  if (combo >= 3) sfx.combo();
+  const label = mult > 1 ? `+${gained} ×${mult}` : `+${gained}`;
+  showFloat(idx, label, info.type === "gold" ? "#d4a017" : "#2ec552");
 }
 
 function endRound() {
   won = true;
   clearInterval(timerId); timerId = null;
-  clearTimeout(moleTimer);
-  // 라운드 점수: hit수 × 10 + 레벨 보너스
-  const gain = hits * 10 + level * 5;
-  totalScore += gain;
+  moleTimers.forEach(t => clearTimeout(t));
+  moleTimers = [];
+  activeMoles.forEach(info => clearTimeout(info.timerId));
+  activeMoles.clear();
+  // 라운드 보너스 (점수는 이미 누적됨 — 여기선 레벨 보너스 + 콤보 보너스)
+  const roundBonus = level * 10 + maxCombo * 5;
+  totalScore += roundBonus;
   $("#score").textContent = totalScore;
   sfx.end();
   $("#winTitle").textContent = `레벨 ${level} 끝!`;
-  $("#winText").textContent = `${hits}마리 잡음 · +${gain}점`;
+  $("#winText").textContent = `${hits}마리 잡음 · 최대 콤보 ${maxCombo} · +${roundBonus}점 보너스`;
   $("#winOverlay").classList.add("show");
 }
 
@@ -443,7 +604,6 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-buildGrid();
 startRound();
 </script>
 </body>

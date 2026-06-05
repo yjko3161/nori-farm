@@ -221,8 +221,8 @@
     <button class="btn danger" id="stopBtn">🛑 그만하기</button>
   </div>
 
-  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
-    두 그림에서 다른 곳을 5군데 찾아봐요!
+  <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;" id="guide">
+    두 그림에서 다른 곳을 찾아봐요!
   </p>
 </div>
 
@@ -687,6 +687,498 @@ const SCENES = [
       },
     ],
   },
+
+  // ===== 새 장면 1: 우주 =====
+  {
+    name: "🚀 우주 모험",
+    base: `
+      <!-- 우주 배경 -->
+      <rect x="0" y="0" width="200" height="150" fill="#1a1442"/>
+      <!-- 별들 -->
+      <g fill="#fff">
+        <circle cx="20" cy="20" r="1"/>
+        <circle cx="50" cy="10" r="1.2"/>
+        <circle cx="120" cy="15" r="1"/>
+        <circle cx="180" cy="30" r="1.3"/>
+        <circle cx="30" cy="50" r="0.8"/>
+        <circle cx="170" cy="70" r="1"/>
+        <circle cx="15" cy="100" r="1"/>
+        <circle cx="190" cy="120" r="1.2"/>
+      </g>
+      <!-- 큰 행성 -->
+      <circle cx="40" cy="115" r="22" fill="#c97442"/>
+      <ellipse cx="40" cy="115" rx="30" ry="6" fill="none" stroke="#a85a30" stroke-width="2"/>
+    `,
+    diffs: [
+      // 색 변화: 로켓 색
+      {
+        id: "rocket",
+        area: { x: 80, y: 40, w: 50, h: 80 },
+        left: `<g transform="translate(105,80)">
+          <path d="M0,-30 L-10,5 L-10,20 L10,20 L10,5 Z" fill="#e25c4a"/>
+          <circle cx="0" cy="-5" r="5" fill="#aee0ee"/>
+          <path d="M-10,5 L-18,18 L-10,15 Z" fill="#888"/>
+          <path d="M10,5 L18,18 L10,15 Z" fill="#888"/>
+          <path d="M-5,20 L0,32 L5,20 Z" fill="#ffb700"/>
+        </g>`,
+        right: `<g transform="translate(105,80)">
+          <path d="M0,-30 L-10,5 L-10,20 L10,20 L10,5 Z" fill="#6a99e5"/>
+          <circle cx="0" cy="-5" r="5" fill="#aee0ee"/>
+          <path d="M-10,5 L-18,18 L-10,15 Z" fill="#888"/>
+          <path d="M10,5 L18,18 L10,15 Z" fill="#888"/>
+          <path d="M-5,20 L0,32 L5,20 Z" fill="#ffb700"/>
+        </g>`,
+      },
+      // 추가/누락: UFO
+      {
+        id: "ufo",
+        area: { x: 140, y: 35, w: 55, h: 30 },
+        left: ``,
+        right: `<g transform="translate(168,50)">
+          <ellipse cx="0" cy="2" rx="18" ry="5" fill="#9a9a9a"/>
+          <ellipse cx="0" cy="-2" rx="10" ry="6" fill="#aee0ee"/>
+          <circle cx="-12" cy="3" r="1.2" fill="#ffd54a"/>
+          <circle cx="0" cy="3" r="1.2" fill="#ffd54a"/>
+          <circle cx="12" cy="3" r="1.2" fill="#ffd54a"/>
+        </g>`,
+      },
+      // 개수: 작은 별
+      {
+        id: "stars",
+        area: { x: 130, y: 90, w: 60, h: 40 },
+        left: `<g fill="#fff5b0">
+          <polygon points="150,105 152,110 157,110 153,113 154,118 150,115 146,118 147,113 143,110 148,110"/>
+        </g>`,
+        right: `<g fill="#fff5b0">
+          <polygon points="150,105 152,110 157,110 153,113 154,118 150,115 146,118 147,113 143,110 148,110"/>
+          <polygon points="175,120 177,124 181,124 178,127 179,131 175,128 171,131 172,127 169,124 173,124"/>
+          <polygon points="135,125 137,128 140,128 138,131 139,134 135,131 131,134 132,131 130,128 133,128"/>
+        </g>`,
+      },
+      // 색 변화: 행성 고리 색
+      {
+        id: "ringColor",
+        area: { x: 5, y: 100, w: 75, h: 40 },
+        left: `<ellipse cx="40" cy="115" rx="30" ry="6" fill="none" stroke="#ff8a00" stroke-width="2.5"/>`,
+        right: `<ellipse cx="40" cy="115" rx="30" ry="6" fill="none" stroke="#5fb6d4" stroke-width="2.5"/>`,
+      },
+      // 표정 변화: 외계인
+      {
+        id: "alien",
+        area: { x: 145, y: 95, w: 45, h: 50 },
+        left: `<g transform="translate(168,125)">
+          <ellipse cx="0" cy="0" rx="13" ry="14" fill="#7ed957"/>
+          <ellipse cx="-5" cy="-3" rx="3" ry="4" fill="#000"/>
+          <ellipse cx="5" cy="-3" rx="3" ry="4" fill="#000"/>
+          <circle cx="-5" cy="-4" r="1" fill="#fff"/>
+          <circle cx="5" cy="-4" r="1" fill="#fff"/>
+          <path d="M-4,6 Q0,9 4,6" stroke="#3a7a35" stroke-width="1.5" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(168,125)">
+          <ellipse cx="0" cy="0" rx="13" ry="14" fill="#7ed957"/>
+          <ellipse cx="-5" cy="-3" rx="3" ry="4" fill="#000"/>
+          <ellipse cx="5" cy="-3" rx="3" ry="4" fill="#000"/>
+          <circle cx="-5" cy="-4" r="1" fill="#fff"/>
+          <circle cx="5" cy="-4" r="1" fill="#fff"/>
+          <path d="M-4,8 Q0,4 4,8" stroke="#3a7a35" stroke-width="1.5" fill="none"/>
+        </g>`,
+      },
+      // 크기 변화: 큰 별
+      {
+        id: "bigStar",
+        area: { x: 75, y: 5, w: 35, h: 35 },
+        left: `<polygon points="92,12 95,21 105,21 97,27 100,37 92,31 84,37 87,27 79,21 89,21" fill="#ffd54a"/>`,
+        right: `<polygon points="92,8 97,21 110,21 99,29 103,42 92,33 81,42 85,29 74,21 87,21" fill="#ffd54a"/>`,
+      },
+      // 추가/누락: 우주인
+      {
+        id: "astronaut",
+        area: { x: 0, y: 55, w: 30, h: 50 },
+        left: ``,
+        right: `<g transform="translate(15,82)">
+          <circle cx="0" cy="-5" r="8" fill="#fff"/>
+          <rect x="-2" y="-9" width="4" height="3" fill="#aee0ee"/>
+          <rect x="-6" y="2" width="12" height="14" fill="#fff" rx="3"/>
+          <line x1="-6" y1="6" x2="-12" y2="10" stroke="#fff" stroke-width="3"/>
+          <line x1="6" y1="6" x2="12" y2="10" stroke="#fff" stroke-width="3"/>
+        </g>`,
+      },
+    ],
+  },
+
+  // ===== 새 장면 2: 바닷속 =====
+  {
+    name: "🐠 산호초 바다",
+    base: `
+      <!-- 바다 -->
+      <rect x="0" y="0" width="200" height="150" fill="#3aa0c8"/>
+      <rect x="0" y="0" width="200" height="40" fill="#5cb8d8"/>
+      <!-- 모래바닥 -->
+      <path d="M0,130 Q50,118 100,128 Q150,138 200,125 L200,150 L0,150 Z" fill="#e8d090"/>
+      <!-- 큰 산호 -->
+      <g transform="translate(35,125)">
+        <path d="M0,0 Q-3,-15 -10,-20 M0,0 Q3,-15 10,-20 M0,0 L0,-25" stroke="#e25c8a" stroke-width="3" fill="none"/>
+      </g>
+    `,
+    diffs: [
+      // 방향 변화: 물고기 방향
+      {
+        id: "fishDir",
+        area: { x: 60, y: 50, w: 50, h: 30 },
+        left: `<g transform="translate(85,65)">
+          <ellipse cx="0" cy="0" rx="12" ry="6" fill="#ff7a30"/>
+          <polygon points="-12,0 -18,-4 -18,4" fill="#ff7a30"/>
+          <circle cx="6" cy="-1" r="1" fill="#000"/>
+        </g>`,
+        right: `<g transform="translate(85,65)">
+          <ellipse cx="0" cy="0" rx="12" ry="6" fill="#ff7a30"/>
+          <polygon points="12,0 18,-4 18,4" fill="#ff7a30"/>
+          <circle cx="-6" cy="-1" r="1" fill="#000"/>
+        </g>`,
+      },
+      // 추가/누락: 문어
+      {
+        id: "octopus",
+        area: { x: 130, y: 80, w: 60, h: 50 },
+        left: ``,
+        right: `<g transform="translate(160,105)">
+          <ellipse cx="0" cy="-5" rx="14" ry="12" fill="#a040a0"/>
+          <circle cx="-4" cy="-7" r="2.5" fill="#fff"/>
+          <circle cx="4" cy="-7" r="2.5" fill="#fff"/>
+          <circle cx="-4" cy="-7" r="1.2" fill="#000"/>
+          <circle cx="4" cy="-7" r="1.2" fill="#000"/>
+          <path d="M-10,5 Q-13,15 -8,18 M-3,8 Q-2,18 2,16 M3,8 Q2,18 -2,16 M10,5 Q13,15 8,18" stroke="#a040a0" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </g>`,
+      },
+      // 개수: 거품
+      {
+        id: "bubbles",
+        area: { x: 95, y: 10, w: 30, h: 50 },
+        left: `<g fill="#fff" fill-opacity="0.7">
+          <circle cx="105" cy="50" r="3"/>
+          <circle cx="115" cy="35" r="2"/>
+        </g>`,
+        right: `<g fill="#fff" fill-opacity="0.7">
+          <circle cx="105" cy="50" r="3"/>
+          <circle cx="115" cy="35" r="2"/>
+          <circle cx="110" cy="20" r="2.5"/>
+          <circle cx="100" cy="30" r="1.8"/>
+          <circle cx="120" cy="15" r="1.5"/>
+        </g>`,
+      },
+      // 색 변화: 산호 색
+      {
+        id: "coralColor",
+        area: { x: 18, y: 95, w: 35, h: 35 },
+        left: `<g transform="translate(35,125)">
+          <path d="M0,0 Q-3,-15 -10,-20 M0,0 Q3,-15 10,-20 M0,0 L0,-25" stroke="#ff5a5a" stroke-width="3.5" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(35,125)">
+          <path d="M0,0 Q-3,-15 -10,-20 M0,0 Q3,-15 10,-20 M0,0 L0,-25" stroke="#ffa030" stroke-width="3.5" fill="none"/>
+        </g>`,
+      },
+      // 크기 변화: 불가사리
+      {
+        id: "starfish",
+        area: { x: 130, y: 120, w: 40, h: 30 },
+        left: `<g transform="translate(150,135)">
+          <polygon points="0,-6 2,-2 6,-2 3,1 4,5 0,3 -4,5 -3,1 -6,-2 -2,-2" fill="#ff9933"/>
+        </g>`,
+        right: `<g transform="translate(150,135)">
+          <polygon points="0,-12 4,-4 12,-4 5,2 8,10 0,5 -8,10 -5,2 -12,-4 -4,-4" fill="#ff9933"/>
+        </g>`,
+      },
+      // 위치 이동: 해파리
+      {
+        id: "jelly",
+        area: { x: 105, y: 35, w: 55, h: 60 },
+        left: `<g transform="translate(120,60)">
+          <path d="M-10,0 Q-10,-12 0,-12 Q10,-12 10,0 Z" fill="#ffb0d0" fill-opacity="0.85"/>
+          <path d="M-7,0 Q-7,5 -8,10 M-3,0 Q-3,7 -2,12 M3,0 Q3,7 2,12 M7,0 Q7,5 8,10" stroke="#ffb0d0" stroke-width="1.2" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(150,75)">
+          <path d="M-10,0 Q-10,-12 0,-12 Q10,-12 10,0 Z" fill="#ffb0d0" fill-opacity="0.85"/>
+          <path d="M-7,0 Q-7,5 -8,10 M-3,0 Q-3,7 -2,12 M3,0 Q3,7 2,12 M7,0 Q7,5 8,10" stroke="#ffb0d0" stroke-width="1.2" fill="none"/>
+        </g>`,
+      },
+      // 추가/누락: 게
+      {
+        id: "crab",
+        area: { x: 60, y: 120, w: 45, h: 30 },
+        left: ``,
+        right: `<g transform="translate(80,138)">
+          <ellipse cx="0" cy="0" rx="10" ry="6" fill="#d6403a"/>
+          <circle cx="-3" cy="-3" r="1.2" fill="#000"/>
+          <circle cx="3" cy="-3" r="1.2" fill="#000"/>
+          <path d="M-10,0 L-15,-4 L-13,-2 L-17,-1 Z" fill="#d6403a"/>
+          <path d="M10,0 L15,-4 L13,-2 L17,-1 Z" fill="#d6403a"/>
+          <line x1="-7" y1="5" x2="-10" y2="8" stroke="#d6403a" stroke-width="1.5"/>
+          <line x1="7" y1="5" x2="10" y2="8" stroke="#d6403a" stroke-width="1.5"/>
+        </g>`,
+      },
+    ],
+  },
+
+  // ===== 새 장면 3: 부엌 =====
+  {
+    name: "🍳 행복한 부엌",
+    base: `
+      <!-- 벽 -->
+      <rect x="0" y="0" width="200" height="90" fill="#fff0b8"/>
+      <!-- 조리대 -->
+      <rect x="0" y="90" width="200" height="60" fill="#a87854"/>
+      <rect x="0" y="90" width="200" height="6" fill="#8a5c3a"/>
+      <!-- 창문 -->
+      <rect x="20" y="15" width="50" height="45" fill="#aee0ee"/>
+      <rect x="20" y="15" width="50" height="45" fill="none" stroke="#7a5236" stroke-width="3"/>
+      <line x1="45" y1="15" x2="45" y2="60" stroke="#7a5236" stroke-width="2"/>
+      <line x1="20" y1="37" x2="70" y2="37" stroke="#7a5236" stroke-width="2"/>
+    `,
+    diffs: [
+      // 색 변화: 냄비 색
+      {
+        id: "potColor",
+        area: { x: 88, y: 70, w: 50, h: 30 },
+        left: `<g transform="translate(112,90)">
+          <rect x="-18" y="-8" width="36" height="14" rx="2" fill="#555"/>
+          <rect x="-22" y="-10" width="4" height="6" fill="#555"/>
+          <rect x="18" y="-10" width="4" height="6" fill="#555"/>
+          <ellipse cx="0" cy="-9" rx="18" ry="3" fill="#888"/>
+        </g>`,
+        right: `<g transform="translate(112,90)">
+          <rect x="-18" y="-8" width="36" height="14" rx="2" fill="#d6403a"/>
+          <rect x="-22" y="-10" width="4" height="6" fill="#d6403a"/>
+          <rect x="18" y="-10" width="4" height="6" fill="#d6403a"/>
+          <ellipse cx="0" cy="-9" rx="18" ry="3" fill="#e88c8c"/>
+        </g>`,
+      },
+      // 개수: 사과
+      {
+        id: "apples",
+        area: { x: 150, y: 90, w: 50, h: 30 },
+        left: `<g>
+          <circle cx="165" cy="108" r="7" fill="#d6403a"/>
+          <path d="M165,101 L167,98" stroke="#3a7a35" stroke-width="1.5"/>
+        </g>`,
+        right: `<g>
+          <circle cx="160" cy="108" r="7" fill="#d6403a"/>
+          <path d="M160,101 L162,98" stroke="#3a7a35" stroke-width="1.5"/>
+          <circle cx="178" cy="110" r="6" fill="#d6403a"/>
+          <path d="M178,104 L180,101" stroke="#3a7a35" stroke-width="1.5"/>
+          <circle cx="190" cy="106" r="5" fill="#d6403a"/>
+          <path d="M190,101 L192,98" stroke="#3a7a35" stroke-width="1.5"/>
+        </g>`,
+      },
+      // 시계 시간 (위치 변화)
+      {
+        id: "clock",
+        area: { x: 90, y: 8, w: 30, h: 32 },
+        left: `<g transform="translate(105,25)">
+          <circle cx="0" cy="0" r="13" fill="#fff" stroke="#333" stroke-width="2"/>
+          <circle cx="0" cy="0" r="1.5" fill="#333"/>
+          <line x1="0" y1="0" x2="0" y2="-8" stroke="#333" stroke-width="2"/>
+          <line x1="0" y1="0" x2="7" y2="0" stroke="#333" stroke-width="1.5"/>
+        </g>`,
+        right: `<g transform="translate(105,25)">
+          <circle cx="0" cy="0" r="13" fill="#fff" stroke="#333" stroke-width="2"/>
+          <circle cx="0" cy="0" r="1.5" fill="#333"/>
+          <line x1="0" y1="0" x2="-7" y2="-4" stroke="#333" stroke-width="2"/>
+          <line x1="0" y1="0" x2="0" y2="8" stroke="#333" stroke-width="1.5"/>
+        </g>`,
+      },
+      // 추가/누락: 김
+      {
+        id: "steam",
+        area: { x: 95, y: 45, w: 40, h: 35 },
+        left: ``,
+        right: `<g stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round" stroke-opacity="0.7">
+          <path d="M105,78 Q102,70 108,62 Q114,54 110,46"/>
+          <path d="M115,78 Q118,70 112,62 Q108,54 114,46"/>
+          <path d="M125,78 Q122,70 128,62 Q132,54 128,46"/>
+        </g>`,
+      },
+      // 색 변화: 컵
+      {
+        id: "cup",
+        area: { x: 0, y: 95, w: 35, h: 35 },
+        left: `<g transform="translate(17,118)">
+          <path d="M-7,-10 L-7,8 L7,8 L7,-10 Z" fill="#5fb6d4"/>
+          <path d="M7,-7 Q12,-7 12,-2 Q12,3 7,3" stroke="#5fb6d4" stroke-width="2" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(17,118)">
+          <path d="M-7,-10 L-7,8 L7,8 L7,-10 Z" fill="#7ed957"/>
+          <path d="M7,-7 Q12,-7 12,-2 Q12,3 7,3" stroke="#7ed957" stroke-width="2" fill="none"/>
+        </g>`,
+      },
+      // 표정 변화: 요리사 얼굴
+      {
+        id: "chef",
+        area: { x: 140, y: 15, w: 50, h: 60 },
+        left: `<g transform="translate(165,55)">
+          <path d="M-10,-18 Q-10,-30 0,-30 Q10,-30 10,-18 Z" fill="#fff"/>
+          <ellipse cx="0" cy="-18" rx="10" ry="3" fill="#fff"/>
+          <circle cx="0" cy="-8" r="8" fill="#fcd9b6"/>
+          <circle cx="-3" cy="-10" r="0.9" fill="#000"/>
+          <circle cx="3" cy="-10" r="0.9" fill="#000"/>
+          <path d="M-3,-5 Q0,-2 3,-5" stroke="#333" stroke-width="1.5" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(165,55)">
+          <path d="M-10,-18 Q-10,-30 0,-30 Q10,-30 10,-18 Z" fill="#fff"/>
+          <ellipse cx="0" cy="-18" rx="10" ry="3" fill="#fff"/>
+          <circle cx="0" cy="-8" r="8" fill="#fcd9b6"/>
+          <circle cx="-3" cy="-10" r="0.9" fill="#000"/>
+          <circle cx="3" cy="-10" r="0.9" fill="#000"/>
+          <path d="M-3,-3 Q0,-7 3,-3" stroke="#333" stroke-width="1.5" fill="none"/>
+        </g>`,
+      },
+      // 추가/누락: 창밖의 새
+      {
+        id: "windowBird",
+        area: { x: 30, y: 18, w: 35, h: 25 },
+        left: ``,
+        right: `<g stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round">
+          <path d="M35,28 Q40,24 45,28"/>
+          <path d="M48,32 Q53,28 58,32"/>
+        </g>`,
+      },
+    ],
+  },
+
+  // ===== 새 장면 4: 놀이공원 =====
+  {
+    name: "🎪 신나는 놀이공원",
+    base: `
+      <!-- 하늘 -->
+      <rect x="0" y="0" width="200" height="100" fill="#ffd9e8"/>
+      <!-- 땅 -->
+      <rect x="0" y="100" width="200" height="50" fill="#a8d088"/>
+      <!-- 텐트 -->
+      <polygon points="20,100 50,55 80,100" fill="#d6403a"/>
+      <polygon points="50,55 50,100 20,100" fill="#e88c8c"/>
+      <rect x="42" y="85" width="16" height="15" fill="#7a4a2a"/>
+    `,
+    diffs: [
+      // 색 변화: 풍선
+      {
+        id: "balloon",
+        area: { x: 100, y: 20, w: 35, h: 50 },
+        left: `<g transform="translate(118,40)">
+          <ellipse cx="0" cy="0" rx="10" ry="12" fill="#5fb6d4"/>
+          <polygon points="-2,12 0,15 2,12" fill="#5fb6d4"/>
+          <path d="M0,15 Q-3,20 0,30" stroke="#888" stroke-width="0.8" fill="none"/>
+        </g>`,
+        right: `<g transform="translate(118,40)">
+          <ellipse cx="0" cy="0" rx="10" ry="12" fill="#d6403a"/>
+          <polygon points="-2,12 0,15 2,12" fill="#d6403a"/>
+          <path d="M0,15 Q-3,20 0,30" stroke="#888" stroke-width="0.8" fill="none"/>
+        </g>`,
+      },
+      // 회전: 관람차 살의 위치 (별표 패턴 회전)
+      {
+        id: "wheel",
+        area: { x: 130, y: 30, w: 65, h: 75 },
+        left: `<g transform="translate(162,68)">
+          <circle cx="0" cy="0" r="28" fill="none" stroke="#7a5236" stroke-width="2.5"/>
+          <circle cx="0" cy="0" r="3" fill="#7a5236"/>
+          <line x1="0" y1="-28" x2="0" y2="28" stroke="#7a5236" stroke-width="1.5"/>
+          <line x1="-28" y1="0" x2="28" y2="0" stroke="#7a5236" stroke-width="1.5"/>
+          <circle cx="0" cy="-28" r="4" fill="#ff7a30"/>
+          <circle cx="28" cy="0" r="4" fill="#ffd54a"/>
+          <circle cx="0" cy="28" r="4" fill="#5fb6d4"/>
+          <circle cx="-28" cy="0" r="4" fill="#7ed957"/>
+          <rect x="-3" y="28" width="6" height="12" fill="#7a5236"/>
+        </g>`,
+        right: `<g transform="translate(162,68)">
+          <circle cx="0" cy="0" r="28" fill="none" stroke="#7a5236" stroke-width="2.5"/>
+          <circle cx="0" cy="0" r="3" fill="#7a5236"/>
+          <line x1="-20" y1="-20" x2="20" y2="20" stroke="#7a5236" stroke-width="1.5"/>
+          <line x1="-20" y1="20" x2="20" y2="-20" stroke="#7a5236" stroke-width="1.5"/>
+          <circle cx="-20" cy="-20" r="4" fill="#ff7a30"/>
+          <circle cx="20" cy="-20" r="4" fill="#ffd54a"/>
+          <circle cx="20" cy="20" r="4" fill="#5fb6d4"/>
+          <circle cx="-20" cy="20" r="4" fill="#7ed957"/>
+          <rect x="-3" y="28" width="6" height="12" fill="#7a5236"/>
+        </g>`,
+      },
+      // 추가/누락: 솜사탕
+      {
+        id: "candy",
+        area: { x: 80, y: 75, w: 30, h: 40 },
+        left: ``,
+        right: `<g transform="translate(93,98)">
+          <circle cx="-2" cy="-3" r="6" fill="#ffb0d0"/>
+          <circle cx="3" cy="-2" r="6" fill="#ffb0d0"/>
+          <circle cx="0" cy="-7" r="5" fill="#ffb0d0"/>
+          <rect x="-0.5" y="3" width="1.5" height="12" fill="#a87854"/>
+        </g>`,
+      },
+      // 개수: 깃발
+      {
+        id: "flags",
+        area: { x: 18, y: 35, w: 70, h: 25 },
+        left: `<g>
+          <line x1="50" y1="55" x2="50" y2="42" stroke="#7a5236" stroke-width="1"/>
+          <polygon points="50,42 60,46 50,50" fill="#ffd54a"/>
+        </g>`,
+        right: `<g>
+          <line x1="50" y1="55" x2="50" y2="42" stroke="#7a5236" stroke-width="1"/>
+          <polygon points="50,42 60,46 50,50" fill="#ffd54a"/>
+          <line x1="30" y1="60" x2="30" y2="48" stroke="#7a5236" stroke-width="1"/>
+          <polygon points="30,48 38,51 30,55" fill="#ff7a30"/>
+          <line x1="75" y1="60" x2="75" y2="48" stroke="#7a5236" stroke-width="1"/>
+          <polygon points="75,48 83,51 75,55" fill="#5fb6d4"/>
+        </g>`,
+      },
+      // 표정 변화: 아이
+      {
+        id: "kid",
+        area: { x: 90, y: 105, w: 30, h: 45 },
+        left: `<g transform="translate(105,130)">
+          <circle cx="0" cy="-10" r="7" fill="#fcd9b6"/>
+          <circle cx="-2" cy="-11" r="0.8" fill="#000"/>
+          <circle cx="2" cy="-11" r="0.8" fill="#000"/>
+          <path d="M-2,-7 Q0,-4 2,-7" stroke="#333" stroke-width="1.2" fill="none"/>
+          <rect x="-6" y="-3" width="12" height="14" rx="2" fill="#ff7a30"/>
+          <line x1="-6" y1="3" x2="-10" y2="8" stroke="#fcd9b6" stroke-width="2.5"/>
+          <line x1="6" y1="3" x2="10" y2="8" stroke="#fcd9b6" stroke-width="2.5"/>
+        </g>`,
+        right: `<g transform="translate(105,130)">
+          <circle cx="0" cy="-10" r="7" fill="#fcd9b6"/>
+          <circle cx="-2" cy="-11" r="0.8" fill="#000"/>
+          <circle cx="2" cy="-11" r="0.8" fill="#000"/>
+          <path d="M-3,-6 Q0,-9 3,-6" stroke="#333" stroke-width="1.2" fill="none"/>
+          <rect x="-6" y="-3" width="12" height="14" rx="2" fill="#ff7a30"/>
+          <line x1="-6" y1="3" x2="-10" y2="8" stroke="#fcd9b6" stroke-width="2.5"/>
+          <line x1="6" y1="3" x2="10" y2="8" stroke="#fcd9b6" stroke-width="2.5"/>
+        </g>`,
+      },
+      // 위치 이동: 구름
+      {
+        id: "cloud",
+        area: { x: 70, y: 5, w: 60, h: 30 },
+        left: `<g fill="#fff">
+          <ellipse cx="85" cy="20" rx="14" ry="7"/>
+          <ellipse cx="75" cy="22" rx="8" ry="5"/>
+        </g>`,
+        right: `<g fill="#fff">
+          <ellipse cx="115" cy="15" rx="14" ry="7"/>
+          <ellipse cx="105" cy="17" rx="8" ry="5"/>
+        </g>`,
+      },
+      // 부분 누락: 텐트 깃발
+      {
+        id: "tentFlag",
+        area: { x: 40, y: 45, w: 25, h: 18 },
+        left: `<g>
+          <line x1="50" y1="55" x2="50" y2="46" stroke="#7a5236" stroke-width="1"/>
+          <polygon points="50,46 58,49 50,52" fill="#ffd54a"/>
+        </g>`,
+        right: `<g>
+          <line x1="50" y1="55" x2="50" y2="46" stroke="#7a5236" stroke-width="1"/>
+        </g>`,
+      },
+    ],
+  },
 ];
 
 // ===== 상태 =====
@@ -706,38 +1198,77 @@ let usedHint = false;
 
 const $ = (q) => document.querySelector(q);
 
-function pickActiveDiffs(scene) {
-  // 무작위 5개 선택
+// 레벨별 차이 개수: L1-3=5, L4-6=6, L7+=7
+function diffCountForLevel(n) {
+  if (n <= 3) return 5;
+  if (n <= 6) return 6;
+  return 7;
+}
+// 레벨별 제한시간 (초). 0 = 제한 없음
+function timeLimitForLevel(n) {
+  if (n <= 4) return 0;
+  if (n <= 7) return 90;
+  return 60;
+}
+
+function pickActiveDiffs(scene, want) {
   const pool = scene.diffs.slice();
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, 5);
+  return pool.slice(0, Math.min(want, pool.length));
 }
+
+let timeLimit = 0;        // 0 = 무제한
+let timeUpFlag = false;
 
 function startLevel(n) {
   level = n;
+  // 장면 순환: 첫 사이클은 순서대로, 한 바퀴 돌면 셔플 효과로 무작위
   scene = SCENES[(n - 1) % SCENES.length];
-  activeDiffs = pickActiveDiffs(scene);
+  const want = diffCountForLevel(n);
+  activeDiffs = pickActiveDiffs(scene, want);
   // 각 diff 마다 50% 확률로 좌/우 변형 스왑 (같은 장면이라도 다른 퍼즐)
   activeDiffs = activeDiffs.map(d => Math.random() < 0.5 ? d : { ...d, left: d.right, right: d.left });
   foundSet = new Set();
   wrongCount = 0;
   usedHint = false;
   levelStart = Date.now();
+  timeLimit = timeLimitForLevel(n);
+  timeUpFlag = false;
   $("#sceneName").textContent = scene.name;
   $("#levelNum").textContent = n;
   $("#found").textContent = `0/${activeDiffs.length}`;
   $("#wrong").textContent = "0";
-  $("#time").textContent = "0초";
-  renderScene();
-  if (!timerId) {
-    timerId = setInterval(() => {
-      const s = Math.floor((Date.now() - levelStart) / 1000);
-      $("#time").textContent = s + "초";
-    }, 250);
+  $("#time").textContent = timeLimit > 0 ? timeLimit + "초" : "0초";
+  const guideEl = $("#guide");
+  if (guideEl) {
+    guideEl.textContent = timeLimit > 0
+      ? `다른 곳 ${activeDiffs.length}군데 — ${timeLimit}초 안에 찾아봐요!`
+      : `다른 곳 ${activeDiffs.length}군데를 찾아봐요!`;
   }
+  renderScene();
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(() => {
+    if (timeUpFlag) return;
+    const s = Math.floor((Date.now() - levelStart) / 1000);
+    if (timeLimit > 0) {
+      const left = Math.max(0, timeLimit - s);
+      $("#time").textContent = left + "초";
+      if (left <= 0) timeUp();
+    } else {
+      $("#time").textContent = s + "초";
+    }
+  }, 250);
+}
+
+function timeUp() {
+  if (timeUpFlag || foundSet.size === activeDiffs.length) return;
+  timeUpFlag = true;
+  sfx.wrong();
+  // 시간초과 — 게임 종료
+  endGame();
 }
 
 function renderScene() {

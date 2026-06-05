@@ -65,7 +65,7 @@
   .bar {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     background: #fff8e9;
     padding: 10px 12px;
@@ -110,6 +110,9 @@
   }
   .cell.goal { background: linear-gradient(135deg, #ffe7a8, #ffcf6e); }
   .cell.trail { background: linear-gradient(135deg, #f8e7ff, #f0d4ff); }
+  .cell.coin { background: linear-gradient(135deg, #fff3c4, #ffe48a); }
+  .cell.fog { background: #2a2018; }
+  .cell.dim { filter: brightness(0.55) saturate(0.7); }
   .cell.player { transform: scale(1.05); }
 
   .controls {
@@ -288,6 +291,10 @@
       <div class="val small" id="time">0초</div>
     </div>
     <div>
+      <div class="label">🥕수집</div>
+      <div class="val small" id="coins">0/0</div>
+    </div>
+    <div>
       <div class="label">점수</div>
       <div class="val" id="score">0</div>
     </div>
@@ -416,6 +423,7 @@ const sfx = {
     tone(220, 0.4, "triangle", 0.15, 0.36);
   },
   rank() { tone(880, 0.08, "sine", 0.12, 0); tone(1175, 0.1, "sine", 0.12, 0.08); tone(1568, 0.15, "sine", 0.12, 0.18); },
+  coin() { tone(988, 0.06, "triangle", 0.16, 0); tone(1319, 0.1, "triangle", 0.14, 0.05); },
 };
 
 // ===== 미로 생성: Recursive Backtracker =====
@@ -478,15 +486,33 @@ let maze = null;
 let px = 0, py = 0;
 let trail = new Set();
 let won = false;
+let coins = new Set();          // 남은 당근 위치 "x,y"
+let coinsTotal = 0;              // 이번 레벨 당근 총 개수
+let coinsGot = 0;                // 모은 개수
+let fogRadius = 0;               // 0 = 포그 없음
 
 const $ = (q) => document.querySelector(q);
 const boardEl = $("#board");
 
 // 레벨별 그리드 크기 (셀 단위)
+// L1=3, L2=3, L3=4, L4=4, ... L15+=10 (셀 10 → 그리드 21×21)
 function cellsForLevel(n) {
-  // L1: 3x3 → 7x7, L2: 3x3, L3-4: 4x4 → 9x9, L5-6: 5x5, L7-8: 6x6, 9+ : 7x7 (최대)
-  const c = Math.min(3 + Math.floor((n - 1) / 2), 7);
-  return c;
+  return Math.min(3 + Math.floor((n - 1) / 2), 10);
+}
+
+// 레벨별 수집 당근 개수 (도착 당근 제외, 추가로 모아야 함)
+function bonusCoinsForLevel(n) {
+  if (n <= 2) return 0;
+  if (n <= 4) return 1;
+  if (n <= 6) return 2;
+  return 3;
+}
+
+// 레벨별 시야 반경 (0 = 포그 없음, 양수 = 그 거리 내 셀만 보임)
+function fogForLevel(n) {
+  if (n < 7) return 0;
+  if (n < 10) return 4;
+  return 3;  // 후반 더 좁게
 }
 
 function startLevel(n) {
@@ -498,9 +524,13 @@ function startLevel(n) {
   levelMoves = 0;
   levelStart = Date.now();
   won = false;
+  fogRadius = fogForLevel(n);
+  placeBonusCoins(bonusCoinsForLevel(n));
+  coinsGot = 0;
   $("#levelNum").textContent = n;
   $("#moves").textContent = "0";
   $("#time").textContent = "0초";
+  $("#coins").textContent = `${coinsGot}/${coinsTotal}`;
   renderBoard();
   if (!timerId) {
     timerId = setInterval(() => {
@@ -510,6 +540,36 @@ function startLevel(n) {
       }
     }, 250);
   }
+}
+
+// 빈 칸 중에서 시작·도착·서로간 충분히 떨어진 곳에 당근 배치
+function placeBonusCoins(want) {
+  coins = new Set();
+  coinsTotal = 0;
+  if (want <= 0) return;
+  const W = maze.W, H = maze.H;
+  const open = [];
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (maze.grid[y][x] !== "#"
+          && !(x === maze.sx && y === maze.sy)
+          && !(x === maze.gx && y === maze.gy))
+        open.push([x, y]);
+  // 셔플
+  for (let i = open.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [open[i], open[j]] = [open[j], open[i]];
+  }
+  const minDist = Math.max(2, Math.floor(Math.min(W, H) / 3));
+  const picked = [];
+  for (const [x, y] of open) {
+    if (picked.length >= want) break;
+    const tooClose = picked.some(([px2, py2]) =>
+      Math.abs(px2 - x) + Math.abs(py2 - y) < minDist);
+    if (!tooClose) picked.push([x, y]);
+  }
+  picked.forEach(([x, y]) => coins.add(x + "," + y));
+  coinsTotal = coins.size;
 }
 
 function renderBoard() {
@@ -524,14 +584,31 @@ function renderBoard() {
     for (let x = 0; x < W; x++) {
       const div = document.createElement("div");
       const c = maze.grid[y][x];
+      const isGoal = (x === maze.gx && y === maze.gy);
+      const isCoin = coins.has(x + "," + y);
+      const isPlayer = (x === px && y === py);
       div.className = "cell " + (c === "#" ? "wall" : "path");
-      if (x === maze.gx && y === maze.gy) div.classList.add("goal");
-      if (trail.has(x + "," + y) && !(x === px && y === py)) div.classList.add("trail");
-      if (x === px && y === py) {
+      if (isGoal) div.classList.add("goal");
+      if (isCoin) div.classList.add("coin");
+      if (trail.has(x + "," + y) && !isPlayer && !isCoin) div.classList.add("trail");
+      if (isPlayer) {
         div.classList.add("player");
         div.textContent = "🐰";
-      } else if (x === maze.gx && y === maze.gy) {
+      } else if (isCoin) {
         div.textContent = "🥕";
+      } else if (isGoal) {
+        // 보너스 당근이 다 모이면 골 당근, 아니면 자물쇠
+        div.textContent = (coinsGot >= coinsTotal) ? "🥕" : "🔒";
+      }
+      // 포그 처리: 플레이어와 거리 > fogRadius 면 어둡게/숨김
+      if (fogRadius > 0) {
+        const dist = Math.abs(x - px) + Math.abs(y - py);
+        if (dist > fogRadius + 1) {
+          div.classList.add("fog");
+          div.textContent = "";
+        } else if (dist > fogRadius) {
+          div.classList.add("dim");
+        }
       }
       div.onclick = () => onCellClick(x, y);
       boardEl.appendChild(div);
@@ -555,29 +632,47 @@ function tryMove(dx, dy) {
   trail.add(px + "," + py);
   levelMoves++;
   $("#moves").textContent = levelMoves;
+  // 당근 줍기
+  const key = px + "," + py;
+  let gotCoin = false;
+  if (coins.has(key)) {
+    coins.delete(key);
+    coinsGot++;
+    $("#coins").textContent = `${coinsGot}/${coinsTotal}`;
+    gotCoin = true;
+    sfx.coin && sfx.coin();
+  }
   renderBoard();
-  if (px === maze.gx && py === maze.gy) winLevel();
-  else sfx.step();
+  // 골 도달은 당근 다 모은 뒤에만 인정
+  if (px === maze.gx && py === maze.gy && coinsGot >= coinsTotal) winLevel();
+  else if (!gotCoin) sfx.step();
 }
 
 function winLevel() {
   won = true;
   sfx.win();
   const sec = Math.max(1, Math.round((Date.now() - levelStart) / 1000));
-  // 점수: 레벨 보너스 + 최단경로 보너스 - 페널티
+  // 점수: 레벨 보너스 + 최단경로 보너스 - 페널티 + 수집/포그 보너스
   const base = 100 + level * 20;
   const efficiency = Math.max(0, maze.shortest * 2 - levelMoves);
   const speedBonus = Math.max(0, 60 - sec);
-  const gain = base + efficiency + speedBonus;
+  const coinBonus = coinsTotal * 30;
+  const fogBonus = fogRadius > 0 ? 40 : 0;
+  const gain = base + efficiency + speedBonus + coinBonus + fogBonus;
   totalScore += gain;
   totalMoves += levelMoves;
   totalSeconds += sec;
   $("#score").textContent = totalScore;
 
-  // 별
+  // 별 — 더 엄격
+  // ⭐⭐⭐: 최단 + 1 이하 (당근 모으는 우회 거리는 별도로 가산해서 비교)
+  // ⭐⭐ : 최단 × 1.5 이하
+  // ⭐  : 그 이상
+  const extra = coinsTotal * 4;  // 당근 모으느라 평균 4칸 정도 우회 가정
+  const par = maze.shortest + extra;
   let stars = "⭐";
-  if (levelMoves <= maze.shortest + 2) stars = "⭐⭐⭐";
-  else if (levelMoves <= maze.shortest + 8) stars = "⭐⭐";
+  if (levelMoves <= par + 1) stars = "⭐⭐⭐";
+  else if (levelMoves <= Math.floor(par * 1.5)) stars = "⭐⭐";
 
   $("#winTitle").textContent = `레벨 ${level} 통과!`;
   $("#winText").textContent = `움직임 ${levelMoves}번 · 최단 ${maze.shortest}번 · ${sec}초 · +${gain}점`;
