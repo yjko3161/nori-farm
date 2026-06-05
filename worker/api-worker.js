@@ -1,27 +1,29 @@
-// Cloudflare Worker — 가족 공용 랭킹 API
+// Cloudflare Worker — 가족 공용 랭킹 API (D1 SQLite 백엔드)
 // 경로: /api/ranking/<game>
-// 메서드: GET (TOP 10) / POST (점수 추가) / DELETE (전체 삭제)
+// 메서드: GET (TOP 10) / POST (점수 추가) / DELETE (게임별 전체 삭제)
 //
 // 배포:
-//   1. Cloudflare 대시보드 → Workers & Pages → Create application → Worker
-//   2. 이름 예: nori-farm-api → Deploy
-//   3. 생성된 Worker 들어가서 "Edit code" 클릭 → 이 파일 전체 내용 붙여넣기 → Save and deploy
-//   4. Settings → Variables → KV namespace bindings → Add:
-//        Variable name: RANKINGS (대문자!)
-//        KV namespace : nori-farm-rankings
-//   5. Settings → Triggers → Routes → Add route:
-//        Route: www.nori-farm.com/api/ranking/*
-//        Zone : nori-farm.com
-//   6. 선택: Settings → Variables → Environment variables → Add:
-//        Variable name: ADMIN_TOKEN
-//        Value: <임의의 긴 비밀 문자열>   (DELETE 보호용)
+//   1. D1 데이터베이스 준비
+//      대시보드 → Workers & Pages → D1 → Create database → 이름 'nori-farm-db'
+//      (또는 `npx wrangler d1 create nori-farm-db`)
+//   2. wrangler.toml 의 database_id 를 위에서 생성된 ID로 교체
+//   3. 배포:
+//      CLOUDFLARE_API_TOKEN=<토큰> npx wrangler deploy
+//   4. 스키마는 첫 요청에 자동 생성됨 (CREATE TABLE IF NOT EXISTS)
+//
+// 데이터 확인:
+//   대시보드 → D1 → nori-farm-db → Console 에서
+//     SELECT * FROM rankings ORDER BY score DESC LIMIT 20;
+//   같은 SQL 직접 실행 가능
 
 const KINDS = new Set([
   "maze", "find", "whack", "memory",
   "math", "sound", "snake", "run",
 ]);
 const MAX_ENTRIES = 10;
-const keyFor = (game) => `ranking:${game}`;
+const OPT_FIELDS = ["moves", "cleared", "wrong", "hits", "misses", "lives"];
+const SELECT_COLS =
+  "id, name, score, level, seconds, moves, cleared, wrong, hits, misses, lives, date";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -46,34 +48,58 @@ function clampInt(v, min, max, def = 0) {
   return Math.max(min, Math.min(max, Math.floor(n)));
 }
 
-function sanitize(body) {
+function sanitize(body, game) {
   const rawName = String(body?.name ?? "익명").trim();
   const name = rawName.slice(0, 8) || "익명";
   const entry = {
+    id: Number(body?.id) || (Date.now() + Math.random()),
+    game,
     name,
     score: clampInt(body?.score, 0, 9_999_999),
     level: clampInt(body?.level, 0, 9999),
     seconds: clampInt(body?.seconds, 0, 99_999),
     date: String(body?.date ?? "").slice(0, 10),
-    id: Number(body?.id) || Date.now(),
+    created_at: Date.now(),
   };
-  for (const opt of ["moves", "cleared", "wrong", "hits", "misses", "lives"]) {
-    if (body && opt in body) {
-      entry[opt] = clampInt(body[opt], 0, 999_999);
-    }
+  for (const opt of OPT_FIELDS) {
+    entry[opt] = (body && opt in body) ? clampInt(body[opt], 0, 999_999) : 0;
   }
   return entry;
 }
 
-async function readRanking(env, game) {
-  const raw = await env.RANKINGS.get(keyFor(game));
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+let schemaReady = false;
+async function ensureSchema(db) {
+  if (schemaReady) return;
+  await db.exec(
+    "CREATE TABLE IF NOT EXISTS rankings (" +
+    "pk INTEGER PRIMARY KEY," +
+    "id REAL NOT NULL," +
+    "game TEXT NOT NULL," +
+    "name TEXT NOT NULL," +
+    "score INTEGER NOT NULL DEFAULT 0," +
+    "level INTEGER NOT NULL DEFAULT 0," +
+    "seconds INTEGER NOT NULL DEFAULT 0," +
+    "moves INTEGER NOT NULL DEFAULT 0," +
+    "cleared INTEGER NOT NULL DEFAULT 0," +
+    "wrong INTEGER NOT NULL DEFAULT 0," +
+    "hits INTEGER NOT NULL DEFAULT 0," +
+    "misses INTEGER NOT NULL DEFAULT 0," +
+    "lives INTEGER NOT NULL DEFAULT 0," +
+    "date TEXT NOT NULL DEFAULT ''," +
+    "created_at INTEGER NOT NULL DEFAULT 0)"
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_game_score ON rankings(game, score DESC, created_at ASC)"
+  );
+  schemaReady = true;
+}
+
+async function readTop(db, game) {
+  const stmt = db.prepare(
+    `SELECT ${SELECT_COLS} FROM rankings WHERE game = ? ORDER BY score DESC, created_at ASC LIMIT ?`
+  );
+  const { results } = await stmt.bind(game, MAX_ENTRIES).all();
+  return results || [];
 }
 
 export default {
@@ -83,9 +109,7 @@ export default {
     if (!m) return json({ error: "not found" }, 404);
     const game = m[1];
     if (!KINDS.has(game)) return json({ error: "unknown kind" }, 404);
-    if (!env.RANKINGS) {
-      return json({ error: "KV binding RANKINGS missing" }, 500);
-    }
+    if (!env.DB) return json({ error: "D1 binding DB missing" }, 500);
 
     const method = request.method;
 
@@ -93,21 +117,27 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
+    await ensureSchema(env.DB);
+
     if (method === "GET") {
-      return json(await readRanking(env, game));
+      return json(await readTop(env.DB, game));
     }
 
     if (method === "POST") {
       let body;
       try { body = await request.json(); }
       catch { return json({ error: "bad json" }, 400); }
-      const entry = sanitize(body);
-      const list = await readRanking(env, game);
-      list.push(entry);
-      list.sort((a, b) => (b.score || 0) - (a.score || 0));
-      const top = list.slice(0, MAX_ENTRIES);
-      await env.RANKINGS.put(keyFor(game), JSON.stringify(top));
-      return json(top);
+      const entry = sanitize(body, game);
+      await env.DB.prepare(
+        "INSERT INTO rankings " +
+        "(id, game, name, score, level, seconds, moves, cleared, wrong, hits, misses, lives, date, created_at) " +
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+      ).bind(
+        entry.id, entry.game, entry.name, entry.score, entry.level, entry.seconds,
+        entry.moves, entry.cleared, entry.wrong, entry.hits, entry.misses, entry.lives,
+        entry.date, entry.created_at
+      ).run();
+      return json(await readTop(env.DB, game));
     }
 
     if (method === "DELETE") {
@@ -117,7 +147,8 @@ export default {
           return json({ error: "unauthorized" }, 401);
         }
       }
-      await env.RANKINGS.put(keyFor(game), JSON.stringify([]));
+      await env.DB.prepare("DELETE FROM rankings WHERE game = ?")
+        .bind(game).run();
       return json([]);
     }
 
