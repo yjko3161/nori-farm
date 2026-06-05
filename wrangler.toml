@@ -1,4 +1,4 @@
-name = "nori-farm-api"
+name = "nori-farm"
 main = "worker/api-worker.js"
 compatibility_date = "2025-01-01"
 
