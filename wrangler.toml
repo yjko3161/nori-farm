@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 # id 값은 Cloudflare 대시보드 → Workers & Pages → KV → nori-farm-rankings
 # 클릭하면 페이지에 "Namespace ID" 로 표시되는 32자리 영문숫자
 kv_namespaces = [
-  { binding = "RANKINGS", id = "PASTE_KV_NAMESPACE_ID_HERE" }
+  { binding = "RANKINGS", id = "4442d1c3221440169a85f47a0d900c36" }
 ]
 
 # 도메인 라우트 — www.nori-farm.com/api/ranking/* 만 이 Worker가 처리
