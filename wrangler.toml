@@ -3,17 +3,15 @@ main = "worker/api-worker.js"
 compatibility_date = "2025-01-01"
 account_id = "e48253acb1080f83226d97a80edb263e"
 
-# 도메인 라우트
-routes = [
-  { pattern = "www.nori-farm.com/api/ranking/*", zone_name = "nori-farm.com" }
-]
+# 정적 자산 (HTML, CSS, JS, 이미지 등) — repo 루트 전체, .assetsignore 로 제외 관리
+[assets]
+directory = "./"
+binding = "ASSETS"
 
 # D1 데이터베이스 바인딩
-# database_id 는 Cloudflare 대시보드 → Workers & Pages → D1 → nori-farm-db
 [[d1_databases]]
 binding = "DB"
 database_name = "nori-farm-db"
 database_id = "f4c15443-9b0f-4c85-855b-86602692f543"
 
-# 선택: DELETE 보호 토큰
-# wrangler secret put ADMIN_TOKEN
+# Custom Domain (www.nori-farm.com 전체) 으로 라우팅됨 — routes 별도 명시 불필요

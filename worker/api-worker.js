@@ -105,6 +105,13 @@ async function readTop(db, game) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // /api/ 외 모든 요청은 정적 자산으로 forward (HTML/CSS/JS/이미지 등)
+    if (!url.pathname.startsWith("/api/")) {
+      if (env.ASSETS) return env.ASSETS.fetch(request);
+      return new Response("Not found", { status: 404 });
+    }
+
     const m = url.pathname.match(/^\/api\/ranking\/([a-z]+)\/?$/);
     if (!m) return json({ error: "not found" }, 404);
     const game = m[1];

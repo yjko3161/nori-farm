@@ -1,0 +1,17 @@
+# Cloudflare Workers Assets — 정적 자산에서 제외할 파일/폴더
+worker/
+functions/
+data/
+.git/
+.github/
+.claude/
+node_modules/
+*.py
+*.toml
+*.md
+*.log
+package.json
+package-lock.json
+.assetsignore
+.gitignore
+HANDOVER.md
