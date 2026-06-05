@@ -64,22 +64,55 @@ http://<PC_IP>:8000
 
 ## 📡 랭킹 API
 
-서버에서 가족 공용 랭킹을 제공합니다.
+가족 공용 랭킹은 두 가지 환경에서 동작합니다.
+
+### 프로덕션 (`nori-farm.com` — Cloudflare Pages Functions + KV)
+
+`functions/api/ranking/[game].js` 가 자동으로 요청을 처리합니다.
+저장은 **Cloudflare KV** namespace `RANKINGS`.
+
+### 로컬 개발 (`python3 server.py`)
+
+`server.py` 가 같은 API를 제공합니다. 저장은 `data/ranking_<game>.json` 파일.
+
+### 공통 인터페이스
 
 ```
 GET    /api/ranking/<game>    → TOP 10 조회
 POST   /api/ranking/<game>    → 점수 추가, 갱신된 TOP 10 반환
-DELETE /api/ranking/<game>    → 전체 삭제 (백도어)
+DELETE /api/ranking/<game>    → 전체 삭제 (ADMIN_TOKEN 설정 시 보호)
 ```
 
 `<game>`: `maze` | `find` | `whack` | `memory` | `math` | `sound` | `snake` | `run`
 
-저장 위치: `data/ranking_<game>.json` (서버 재시작해도 보존, `.gitignore`됨)
-
-랭킹 초기화 예시:
+랭킹 초기화 예시 (프로덕션, 토큰 보호 시):
 ```bash
-curl -X DELETE https://nori-farm.com/api/ranking/maze
+curl -X DELETE -H "X-Admin-Token: <비밀토큰>" https://nori-farm.com/api/ranking/maze
 ```
+
+---
+
+## ☁️ Cloudflare Pages KV 설정 (최초 1회)
+
+프로덕션에서 가족 공용 랭킹이 동작하려면 KV namespace 바인딩이 필요합니다.
+
+1. **KV namespace 생성**
+   - Cloudflare 대시보드 → **Workers & Pages** → **KV** → **Create namespace**
+   - 이름 예: `nori-farm-rankings`
+
+2. **Pages 프로젝트에 바인딩**
+   - 대시보드 → **Workers & Pages** → 프로젝트 선택 → **Settings** → **Functions** → **KV namespace bindings** → **Add binding**
+   - **Variable name**: `RANKINGS` (이 이름 그대로!)
+   - **KV namespace**: 위에서 만든 namespace 선택
+
+3. **(선택) DELETE 토큰 설정**
+   - **Settings** → **Environment variables** → **Add variable**
+   - Name: `ADMIN_TOKEN`, Value: 임의의 긴 문자열 (Production / Preview 둘 다 권장)
+
+4. **재배포**
+   - 설정 후 다음 `git push` 시 자동 반영, 또는 대시보드에서 **Retry deployment**
+
+확인: 배포 후 `https://nori-farm.com/api/ranking/maze` 가 `[]` (또는 기록 배열) 을 반환하면 성공.
 
 ---
 
@@ -100,7 +133,9 @@ nori-farm/
 ├── sw.js               # 서비스 워커 (오프라인 캐시)
 ├── server.py           # 랭킹 API + 정적 파일 서버
 ├── icons/              # PWA 아이콘 (32, 180, 192, 512, 1024)
-└── data/               # 런타임 랭킹 데이터 (gitignore)
+├── functions/          # Cloudflare Pages Functions (프로덕션 API)
+│   └── api/ranking/[game].js
+└── data/               # 런타임 랭킹 데이터 (gitignore, 로컬 server.py용)
 ```
 
 각 게임 파일은 **자기 자신 안에 모든 것이 들어있는 단일 HTML 파일**입니다 (HTML/CSS/JS 분리 없음). 그래서 한 파일만 수정/배포하면 됩니다.
