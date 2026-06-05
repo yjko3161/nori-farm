@@ -111,8 +111,25 @@
   .cell.goal { background: linear-gradient(135deg, #ffe7a8, #ffcf6e); }
   .cell.trail { background: linear-gradient(135deg, #f8e7ff, #f0d4ff); }
   .cell.coin { background: linear-gradient(135deg, #fff3c4, #ffe48a); }
-  .cell.fog { background: #2a2018; }
-  .cell.dim { filter: brightness(0.55) saturate(0.7); }
+  .cell.fog { background: #1a1208; }
+  .cell.dim { filter: brightness(0.5) saturate(0.7); }
+  .cell.spike {
+    background: linear-gradient(135deg, #4a0020, #7a0030);
+    position: relative;
+  }
+  .cell.spike::after {
+    content: "✦";
+    position: absolute;
+    color: #ff5050;
+    font-weight: 900;
+    font-size: 1.2em;
+    text-shadow: 0 0 4px #ff0000;
+    animation: spikePulse 1.2s ease-in-out infinite;
+  }
+  @keyframes spikePulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
   .cell.player { transform: scale(1.05); }
 
   .controls {
@@ -321,7 +338,8 @@
   </div>
 
   <p style="font-size:12px; color:#7a6244; text-align:center; margin:6px 0 0;">
-    방향키 ⬅️⬆️⬇️➡️ &nbsp;·&nbsp; 옆 칸 클릭 &nbsp;·&nbsp; 화면 버튼
+    방향키 ⬅️⬆️⬇️➡️ &nbsp;·&nbsp; 옆 칸 클릭 &nbsp;·&nbsp; 화면 버튼<br>
+    🥕 다 모으고 결승선까지 · ✦ 가시 닿으면 죽음 · 100레벨까지 도전!
   </p>
 </div>
 
@@ -334,6 +352,19 @@
     <div class="stars" id="winStars">⭐⭐⭐</div>
     <div class="btnrow" style="margin-top:10px;">
       <button class="btn" id="winNext">다음 레벨 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- 가시 트랩 — 게임 오버 -->
+<div class="overlay" id="deadOverlay">
+  <div class="modal">
+    <div class="big">💥</div>
+    <h2>가시에 닿았어요!</h2>
+    <p id="deadText">레벨 1 · 도전 횟수 X번</p>
+    <div class="btnrow" style="margin-top:10px;">
+      <button class="btn" id="deadRetryBtn">↺ 이 레벨 다시</button>
+      <button class="btn danger" id="deadEndBtn">🏁 그만하기</button>
     </div>
   </div>
 </div>
@@ -453,9 +484,10 @@ function generateMaze(cw, ch) {
       stack.push([nx, ny]);
     } else stack.pop();
   }
-  // 도착점: 시작(1,1)에서 BFS로 가장 먼 빈칸
+  // 도착점: 시작(1,1)에서 BFS로 가장 먼 빈칸 (parent 추적 → 솔루션 경로 복원)
   const sx = 1, sy = 1;
   const dist = Array.from({ length: H }, () => Array(W).fill(-1));
+  const parent = Array.from({ length: H }, () => Array(W).fill(null));
   dist[sy][sx] = 0;
   const q = [[sx, sy]];
   let far = [sx, sy];
@@ -468,13 +500,29 @@ function generateMaze(cw, ch) {
       if (g[ny][nx] === "#") continue;
       if (dist[ny][nx] !== -1) continue;
       dist[ny][nx] = dist[y][x] + 1;
+      parent[ny][nx] = [x, y];
       q.push([nx, ny]);
     }
   }
-  return { grid: g, W, H, sx, sy, gx: far[0], gy: far[1], shortest: dist[far[1]][far[0]] };
+  // 솔루션 경로 복원 (시작→목표)
+  const path = [];
+  let cur = far;
+  while (cur) {
+    path.push(cur);
+    const [cx, cy] = cur;
+    cur = parent[cy][cx];
+  }
+  path.reverse();
+  return {
+    grid: g, W, H,
+    sx, sy, gx: far[0], gy: far[1],
+    shortest: dist[far[1]][far[0]],
+    solution: path,
+  };
 }
 
 // ===== 상태 =====
+const MAX_LEVEL = 100;
 let level = 1;
 let totalMoves = 0;
 let totalSeconds = 0;
@@ -486,33 +534,47 @@ let maze = null;
 let px = 0, py = 0;
 let trail = new Set();
 let won = false;
+let gameOverFlag = false;
+let retryCount = 0;              // 이번 레벨에서 가시로 죽은 횟수
 let coins = new Set();          // 남은 당근 위치 "x,y"
 let coinsTotal = 0;              // 이번 레벨 당근 총 개수
 let coinsGot = 0;                // 모은 개수
+let spikes = new Set();         // 가시 위치 "x,y"
 let fogRadius = 0;               // 0 = 포그 없음
 
 const $ = (q) => document.querySelector(q);
 const boardEl = $("#board");
 
-// 레벨별 그리드 크기 (셀 단위)
-// L1=3, L2=3, L3=4, L4=4, ... L15+=10 (셀 10 → 그리드 21×21)
+// 레벨별 그리드 크기 (셀 단위, 최대 10셀=21×21)
+// L1=3, L13=4, L25=5, L37=6, L49=7, L61=8, L73=9, L85+=10
 function cellsForLevel(n) {
-  return Math.min(3 + Math.floor((n - 1) / 2), 10);
+  return Math.min(3 + Math.floor((n - 1) / 12), 10);
 }
 
-// 레벨별 수집 당근 개수 (도착 당근 제외, 추가로 모아야 함)
+// 레벨별 수집 당근 개수 (도착 당근 제외)
 function bonusCoinsForLevel(n) {
-  if (n <= 2) return 0;
-  if (n <= 4) return 1;
-  if (n <= 6) return 2;
-  return 3;
+  if (n < 3) return 0;
+  if (n < 10) return 1;
+  if (n < 25) return 2;
+  if (n < 50) return 3;
+  if (n < 80) return 4;
+  return 5;
 }
 
-// 레벨별 시야 반경 (0 = 포그 없음, 양수 = 그 거리 내 셀만 보임)
+// 레벨별 시야 반경 (0 = 포그 없음)
 function fogForLevel(n) {
-  if (n < 7) return 0;
-  if (n < 10) return 4;
-  return 3;  // 후반 더 좁게
+  if (n < 5) return 0;
+  if (n < 12) return 5;
+  if (n < 25) return 4;
+  if (n < 50) return 3;
+  return 2;   // L50+ 시야 2칸 (거의 안 보임)
+}
+
+// 레벨별 가시 개수 — 빈 셀 대비 비율로 계산 (솔루션 경로는 안전)
+// L3: 약 3%, L20: 약 15%, L50: 25%, L100: 35%
+function spikeRatioForLevel(n) {
+  if (n < 3) return 0;
+  return Math.min(0.35, 0.02 + (n - 3) * 0.0035);
 }
 
 function startLevel(n) {
@@ -524,9 +586,13 @@ function startLevel(n) {
   levelMoves = 0;
   levelStart = Date.now();
   won = false;
+  gameOverFlag = false;
+  retryCount = 0;
   fogRadius = fogForLevel(n);
   placeBonusCoins(bonusCoinsForLevel(n));
   coinsGot = 0;
+  // 가시는 코인 배치 후 (코인 위치 보호)
+  placeSpikes(n);
   $("#levelNum").textContent = n;
   $("#moves").textContent = "0";
   $("#time").textContent = "0초";
@@ -534,12 +600,30 @@ function startLevel(n) {
   renderBoard();
   if (!timerId) {
     timerId = setInterval(() => {
-      if (!won) {
+      if (!won && !gameOverFlag) {
         const s = Math.floor((Date.now() - levelStart) / 1000);
         $("#time").textContent = s + "초";
       }
     }, 250);
   }
+}
+
+// 같은 레벨 재시도 (가시로 죽었을 때 — 같은 미로 유지)
+function retryLevel() {
+  px = maze.sx; py = maze.sy;
+  trail = new Set([px + "," + py]);
+  levelMoves = 0;
+  levelStart = Date.now();
+  won = false;
+  gameOverFlag = false;
+  coinsGot = 0;
+  // 코인은 다시 배치 (먹은 게 부활)
+  placeBonusCoins(bonusCoinsForLevel(level));
+  // 가시는 그대로 유지 (사용자가 위치 학습 가능 → 약간의 자비)
+  $("#moves").textContent = "0";
+  $("#time").textContent = "0초";
+  $("#coins").textContent = `${coinsGot}/${coinsTotal}`;
+  renderBoard();
 }
 
 // 빈 칸 중에서 시작·도착·서로간 충분히 떨어진 곳에 당근 배치
@@ -572,6 +656,46 @@ function placeBonusCoins(want) {
   coinsTotal = coins.size;
 }
 
+// 가시 배치 — 솔루션 경로 + 시작/목표 + 인접 + 코인 위치는 안전
+function placeSpikes(n) {
+  spikes = new Set();
+  const ratio = spikeRatioForLevel(n);
+  if (ratio <= 0) return;
+  const W = maze.W, H = maze.H;
+  // 안전한 셀 (가시 못 두는 곳)
+  const safe = new Set();
+  // 솔루션 경로 전체
+  for (const [x, y] of maze.solution) safe.add(x + "," + y);
+  // 시작·목표 + 한 칸 인접 (게임 시작/끝 직전 즉사 방지)
+  for (const [bx, by] of [[maze.sx, maze.sy], [maze.gx, maze.gy]]) {
+    safe.add(bx + "," + by);
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      safe.add((bx+dx) + "," + (by+dy));
+    }
+  }
+  // 코인 위치
+  for (const k of coins) safe.add(k);
+  // 빈 셀 후보
+  const cands = [];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (maze.grid[y][x] === "#") continue;
+      const k = x + "," + y;
+      if (safe.has(k)) continue;
+      cands.push(k);
+    }
+  }
+  // 셔플
+  for (let i = cands.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cands[i], cands[j]] = [cands[j], cands[i]];
+  }
+  // 전체 빈 셀 수 기준 비율로 결정 (후보 셀이 적으면 그 한도까지)
+  const totalOpen = cands.length + safe.size;
+  const want = Math.min(cands.length, Math.floor(totalOpen * ratio));
+  for (let i = 0; i < want; i++) spikes.add(cands[i]);
+}
+
 function renderBoard() {
   const W = maze.W, H = maze.H;
   boardEl.style.gridTemplateColumns = `repeat(${W}, 1fr)`;
@@ -584,13 +708,16 @@ function renderBoard() {
     for (let x = 0; x < W; x++) {
       const div = document.createElement("div");
       const c = maze.grid[y][x];
+      const key = x + "," + y;
       const isGoal = (x === maze.gx && y === maze.gy);
-      const isCoin = coins.has(x + "," + y);
+      const isCoin = coins.has(key);
+      const isSpike = spikes.has(key);
       const isPlayer = (x === px && y === py);
       div.className = "cell " + (c === "#" ? "wall" : "path");
       if (isGoal) div.classList.add("goal");
       if (isCoin) div.classList.add("coin");
-      if (trail.has(x + "," + y) && !isPlayer && !isCoin) div.classList.add("trail");
+      if (isSpike) div.classList.add("spike");
+      if (trail.has(key) && !isPlayer && !isCoin && !isSpike) div.classList.add("trail");
       if (isPlayer) {
         div.classList.add("player");
         div.textContent = "🐰";
@@ -606,6 +733,8 @@ function renderBoard() {
         if (dist > fogRadius + 1) {
           div.classList.add("fog");
           div.textContent = "";
+          // 포그 안에선 가시도 숨김
+          div.classList.remove("spike");
         } else if (dist > fogRadius) {
           div.classList.add("dim");
         }
@@ -624,7 +753,7 @@ function onCellClick(x, y) {
 }
 
 function tryMove(dx, dy) {
-  if (won) return;
+  if (won || gameOverFlag) return;
   const nx = px + dx, ny = py + dy;
   if (nx < 0 || ny < 0 || nx >= maze.W || ny >= maze.H) { sfx.bump(); return; }
   if (maze.grid[ny][nx] === "#") { sfx.bump(); return; }
@@ -632,8 +761,14 @@ function tryMove(dx, dy) {
   trail.add(px + "," + py);
   levelMoves++;
   $("#moves").textContent = levelMoves;
-  // 당근 줍기
   const key = px + "," + py;
+  // 가시 체크 — 즉시 게임 오버
+  if (spikes.has(key)) {
+    renderBoard();
+    spikeDeath();
+    return;
+  }
+  // 당근 줍기
   let gotCoin = false;
   if (coins.has(key)) {
     coins.delete(key);
@@ -648,40 +783,62 @@ function tryMove(dx, dy) {
   else if (!gotCoin) sfx.step();
 }
 
+function spikeDeath() {
+  gameOverFlag = true;
+  retryCount++;
+  sfx.gameover();
+  $("#deadText").textContent =
+    `레벨 ${level} · 이 레벨 도전 ${retryCount}번째 · 점수 변동 없음`;
+  $("#deadOverlay").classList.add("show");
+}
+
 function winLevel() {
   won = true;
   sfx.win();
   const sec = Math.max(1, Math.round((Date.now() - levelStart) / 1000));
-  // 점수: 레벨 보너스 + 최단경로 보너스 - 페널티 + 수집/포그 보너스
+  // 점수: 레벨 보너스 + 최단경로 보너스 - 페널티 + 수집/포그/가시 보너스
   const base = 100 + level * 20;
   const efficiency = Math.max(0, maze.shortest * 2 - levelMoves);
   const speedBonus = Math.max(0, 60 - sec);
   const coinBonus = coinsTotal * 30;
-  const fogBonus = fogRadius > 0 ? 40 : 0;
-  const gain = base + efficiency + speedBonus + coinBonus + fogBonus;
+  const fogBonus = fogRadius > 0 ? (40 + (5 - fogRadius) * 20) : 0;
+  const spikeBonus = spikes.size * 5;
+  const retryPenalty = retryCount * 50;
+  const milestoneBonus = (level % 10 === 0) ? level * 50 : 0;  // 10레벨마다 보너스
+  const gain = Math.max(20, base + efficiency + speedBonus + coinBonus + fogBonus + spikeBonus + milestoneBonus - retryPenalty);
   totalScore += gain;
   totalMoves += levelMoves;
   totalSeconds += sec;
   $("#score").textContent = totalScore;
 
-  // 별 — 더 엄격
-  // ⭐⭐⭐: 최단 + 1 이하 (당근 모으는 우회 거리는 별도로 가산해서 비교)
-  // ⭐⭐ : 최단 × 1.5 이하
-  // ⭐  : 그 이상
-  const extra = coinsTotal * 4;  // 당근 모으느라 평균 4칸 정도 우회 가정
+  // 별 기준 — 가시 회피하느라 우회 발생 감안
+  const extra = coinsTotal * 4 + Math.floor(spikes.size * 0.5);
   const par = maze.shortest + extra;
   let stars = "⭐";
-  if (levelMoves <= par + 1) stars = "⭐⭐⭐";
-  else if (levelMoves <= Math.floor(par * 1.5)) stars = "⭐⭐";
+  if (levelMoves <= par + 1 && retryCount === 0) stars = "⭐⭐⭐";
+  else if (levelMoves <= Math.floor(par * 1.5) && retryCount <= 1) stars = "⭐⭐";
 
-  $("#winTitle").textContent = `레벨 ${level} 통과!`;
-  $("#winText").textContent = `움직임 ${levelMoves}번 · 최단 ${maze.shortest}번 · ${sec}초 · +${gain}점`;
+  const isFinal = level >= MAX_LEVEL;
+  $("#winTitle").textContent = isFinal
+    ? `🏆 100레벨 챔피언!`
+    : `레벨 ${level} 통과!`;
+  $("#winText").textContent =
+    `움직임 ${levelMoves}번 · 최단 ${maze.shortest}번 · ${sec}초` +
+    (retryCount > 0 ? ` · 재도전 ${retryCount}번` : "") +
+    ` · +${gain}점`;
   $("#winStars").textContent = stars;
+  // 100레벨 클리어 시 "다음" 버튼은 게임 종료로
+  $("#winNext").textContent = isFinal ? "🏁 점수 등록" : "다음 레벨 ▶";
   $("#winOverlay").classList.add("show");
 }
 
 function nextLevel() {
   $("#winOverlay").classList.remove("show");
+  if (level >= MAX_LEVEL) {
+    // 100레벨 챔피언 → 점수 등록 화면
+    endGame();
+    return;
+  }
   startLevel(level + 1);
 }
 
@@ -821,6 +978,16 @@ $("#stopBtn").onclick = () => endGame();
 $("#winNext").onclick = () => nextLevel();
 $("#saveScoreBtn").onclick = () => saveScore();
 $("#rankRestartBtn").onclick = () => restartGame();
+
+// 가시 사망 모달
+$("#deadRetryBtn").onclick = () => {
+  $("#deadOverlay").classList.remove("show");
+  retryLevel();
+};
+$("#deadEndBtn").onclick = () => {
+  $("#deadOverlay").classList.remove("show");
+  endGame();
+};
 
 // 음소거
 const muteBtn = $("#muteBtn");
