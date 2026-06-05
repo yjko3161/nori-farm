@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>🏃 토끼 달리기</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="달리기">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<style>
+  :root {
+    --bg1: #fff5e6;
+    --bg2: #ffe4b3;
+    --accent: #ff7a59;
+    --text: #4a3520;
+    --track: #c9a76a;
+    --grass: #a8d088;
+    --sky: #bce3f0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    color: var(--text);
+    min-height: 100vh;
+    user-select: none; -webkit-user-select: none;
+    overflow-x: hidden;
+    touch-action: manipulation;
+  }
+  .app {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 12px 12px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  h1 { margin: 4px 0 2px; font-size: 22px; text-align: center; color: var(--accent); text-shadow: 2px 2px 0 #fff; }
+  .topnav { width: 100%; display: flex; justify-content: flex-start; }
+  .topnav a {
+    text-decoration: none; color: var(--accent); background: #fff8e9;
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 0 #e9d8b0;
+  }
+
+  .bar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    background: #fff8e9;
+    padding: 10px;
+    border-radius: 16px;
+    box-shadow: 0 2px 0 #e9d8b0;
+    text-align: center;
+  }
+  .bar .label { font-size: 11px; color: #7a6244; font-weight: 600; }
+  .bar .val { font-size: 18px; color: var(--accent); font-weight: 800; }
+  .bar .val.small { font-size: 16px; color: #555; }
+  .bar .val.warn { color: #d96363; }
+
+  /* 트랙 (하늘 + 풀밭 + 달리는 길) */
+  .scene {
+    width: 100%;
+    background: linear-gradient(to bottom, var(--sky) 0%, var(--sky) 55%, var(--grass) 55%, var(--grass) 75%, var(--track) 75%, var(--track) 100%);
+    border-radius: 18px;
+    box-shadow: 0 3px 0 #e9d8b0;
+    position: relative;
+    overflow: hidden;
+    height: 180px;
+  }
+  /* 트랙 위 흰 줄 (스크롤 효과) */
+  .lanes {
+    position: absolute; left: 0; right: 0;
+    bottom: 6%;
+    height: 6px;
+    background-image: repeating-linear-gradient(to right,
+      #fff5d0 0 24px, transparent 24px 48px);
+    opacity: 0.85;
+  }
+  /* 백그라운드 구름 */
+  .cloud {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.9;
+  }
+  .cloud.c1 { top: 14%; left: 12%; width: 50px; height: 18px; }
+  .cloud.c1::before { content:""; position:absolute; left:8px; top:-8px; width:24px; height:18px; background:#fff; border-radius:50%; }
+  .cloud.c2 { top: 6%; left: 60%; width: 40px; height: 14px; }
+  .cloud.c2::before { content:""; position:absolute; left:6px; top:-6px; width:20px; height:14px; background:#fff; border-radius:50%; }
+
+  /* 결승선 */
+  .finish {
+    position: absolute;
+    top: 50%;
+    bottom: 0;
+    width: 8px;
+    transform: translateY(0);
+    background-image: linear-gradient(45deg, #000 25%, #fff 25%, #fff 50%, #000 50%, #000 75%, #fff 75%);
+    background-size: 8px 8px;
+    border-radius: 2px;
+    z-index: 1;
+  }
+  .finish::after {
+    content: "🏁";
+    position: absolute;
+    top: -22px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+  }
+
+  /* 토끼 */
+  .runner {
+    position: absolute;
+    bottom: 8%;
+    width: 60px;
+    height: 60px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 44px;
+    transition: left 60ms linear;
+    z-index: 2;
+    transform: translateX(-50%);
+  }
+  .runner.bounce { animation: bounce 0.16s ease-out; }
+  @keyframes bounce {
+    0% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-12px); }
+    100% { transform: translateX(-50%) translateY(0); }
+  }
+
+  /* 진행 바 */
+  .progress-wrap {
+    width: 100%;
+    height: 14px;
+    background: #fff8e9;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 0 #e9d8b0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffd166, var(--accent));
+    transition: width 80ms ease;
+    border-radius: 8px;
+  }
+
+  /* 큰 탭 영역 (화면 절반 이상) */
+  .tap-area {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-weight: 900;
+    font-size: 36px;
+    padding: 26px 16px;
+    border-radius: 22px;
+    box-shadow: 0 5px 0 #c95838;
+    cursor: pointer;
+    letter-spacing: 4px;
+    transition: transform 60ms ease, box-shadow 60ms ease;
+    -webkit-touch-callout: none;
+  }
+  .tap-area:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #c95838;
+    background: #ff8e70;
+  }
+  .tap-area.disabled {
+    background: #d8c8a8;
+    box-shadow: 0 5px 0 #a8987a;
+    cursor: default;
+  }
+  .tap-hint { font-size: 13px; color: #7a6244; text-align: center; margin: -2px 0 0; }
+
+  .btnrow { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    border: none; background: var(--accent); color: white; font-weight: 700;
+    padding: 10px 16px; border-radius: 12px; box-shadow: 0 3px 0 #c95838;
+    font-size: 15px; cursor: pointer;
+  }
+  .btn.secondary { background: #fff; color: var(--accent); box-shadow: 0 3px 0 #e9d8b0; }
+  .btn.danger { background: #d96363; box-shadow: 0 3px 0 #a14747; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c95838; }
+
+  /* 오버레이 */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; padding: 16px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #fffaf0; padding: 22px; border-radius: 22px;
+    text-align: center; box-shadow: 0 10px 0 #c9a76a;
+    max-width: 360px; width: 100%;
+  }
+  .modal h2 { margin: 0 0 10px; color: var(--accent); font-size: 26px; }
+  .modal p { margin: 4px 0 12px; font-size: 15px; }
+  .big { font-size: 44px; margin: 4px 0; }
+  .score-big { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; line-height: 1; }
+  .input {
+    width: 100%; border: 2px solid #f0dcae; border-radius: 12px;
+    padding: 10px 12px; font-size: 16px; font-family: inherit;
+    text-align: center; background: #fff; margin: 6px 0; color: var(--text);
+  }
+  .input:focus { outline: none; border-color: var(--accent); }
+
+  /* 거리 선택 그리드 */
+  .distance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0 4px;
+  }
+  .distance-btn {
+    border: none; background: #fff8e9; color: var(--text);
+    padding: 14px 8px; border-radius: 14px;
+    box-shadow: 0 3px 0 #e9d8b0;
+    font-weight: 800; font-size: 16px;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    transition: transform 60ms ease;
+  }
+  .distance-btn .d-num { font-size: 22px; color: var(--accent); }
+  .distance-btn .d-tag { font-size: 11px; color: #7a6244; font-weight: 600; }
+  .distance-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e9d8b0; }
+  .distance-btn.long { background: #fff2d0; }
+  .distance-btn.very-long { background: #ffe7a8; }
+
+  /* 결과 디테일 */
+  .result-line {
+    display: flex; justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px; color: #555;
+  }
+  .result-line b { color: var(--text); }
+
+  /* 랭킹 */
+  .ranking {
+    text-align: left; background: #fff; border-radius: 14px;
+    padding: 6px; margin-top: 10px; max-height: 60vh; overflow-y: auto;
+  }
+  .ranking ol {
+    margin: 0; padding: 0; list-style: none;
+    counter-reset: rank;
+  }
+  .ranking li {
+    counter-increment: rank;
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 4px 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0e3c0;
+    font-size: 17px;
+  }
+  .ranking li:last-child { border-bottom: none; }
+  .ranking li::before {
+    content: counter(rank) ".";
+    color: #b29a6e; font-weight: 800; font-size: 17px;
+    min-width: 1.6em; text-align: right;
+    flex: 0 0 auto;
+  }
+  .ranking li.mine {
+    background: #fff2d0; border-radius: 10px;
+    font-weight: 800;
+    border-bottom-color: transparent;
+  }
+  .ranking li.mine::before { color: var(--accent); }
+  .ranking .name {
+    order: 1;
+    flex: 1 1 auto;
+    font-size: 18px; color: var(--text);
+    min-width: 0;
+  }
+  .ranking .score {
+    order: 2;
+    flex: 0 0 auto;
+    color: var(--accent); font-weight: 800; font-size: 22px;
+    white-space: nowrap;
+  }
+  .ranking .meta {
+    order: 3;
+    flex: 1 1 100%;
+    color: #7a6244; font-size: 13px;
+    margin-left: 1.8em;
+    margin-top: -2px;
+  }
+
+  /* 플로팅 +1m 텍스트 */
+  .float-m {
+    position: absolute;
+    pointer-events: none;
+    font-weight: 800;
+    font-size: 16px;
+    color: #2ec552;
+    animation: floatUp 0.6s ease-out forwards;
+    z-index: 5;
+  }
+  @keyframes floatUp {
+    0% { transform: translate(-50%, 0); opacity: 1; }
+    100% { transform: translate(-50%, -40px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav"><a href="./">← 메인</a></div>
+  <h1>🏃 토끼 달리기</h1>
+
+  <div class="bar">
+    <div><div class="label">목표</div><div class="val" id="goalLabel">-</div></div>
+    <div><div class="label">남은 시간</div><div class="val small" id="time">1:00</div></div>
+    <div><div class="label">현재</div><div class="val small" id="dist">0m</div></div>
+    <div><div class="label">초당 탭</div><div class="val small" id="cps">0</div></div>
+  </div>
+
+  <div class="scene" id="scene">
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="lanes"></div>
+    <div class="finish" id="finish" style="right: 4%;"></div>
+    <div class="runner" id="runner" style="left: 8%;">🐰</div>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+
+  <button class="tap-area" id="tapBtn" type="button">탭!</button>
+  <p class="tap-hint">화면을 빠르게 연타해서 결승선까지 달리세요!</p>
+
+  <div class="btnrow">
+    <button class="btn secondary" id="restartBtn">↺ 다시 고르기</button>
+    <button class="btn secondary" id="muteBtn">🔊 소리</button>
+    <button class="btn danger" id="stopBtn">🛑 그만하기</button>
+  </div>
+</div>
+
+<!-- 거리 선택 -->
+<div class="overlay show" id="pickOverlay">
+  <div class="modal">
+    <div class="big">🏃</div>
+    <h2>얼마나 달릴까?</h2>
+    <p>거리를 고르면 바로 시작! (제한 시간 1분)</p>
+    <div class="distance-grid" id="distanceGrid"></div>
+    <p style="font-size:12px;color:#7a6244;margin-top:8px;">탭 1번 = 1m 전진</p>
+  </div>
+</div>
+
+<!-- 결과 -->
+<div class="overlay" id="resultOverlay">
+  <div class="modal">
+    <div class="big" id="resultEmoji">🎉</div>
+    <h2 id="resultTitle">결승선 도착!</h2>
+    <div class="score-big" id="resultScore">0</div>
+    <div id="resultLines" style="margin: 8px 0 12px;"></div>
+    <p>이름을 적어줘! (랭킹에 올라가요)</p>
+    <input class="input" id="nameInput" maxlength="8" placeholder="예: 토끼1">
+    <div class="btnrow">
+      <button class="btn" id="saveScoreBtn">랭킹에 올리기 🏆</button>
+      <button class="btn secondary" id="skipSaveBtn">건너뛰기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 랭킹 -->
+<div class="overlay" id="rankOverlay">
+  <div class="modal">
+    <div class="big">🏆</div>
+    <h2>달리기 랭킹 TOP 10</h2>
+    <div class="ranking" id="rankingList"></div>
+    <div class="btnrow" style="margin-top:12px;">
+      <button class="btn" id="rankRestartBtn">다시 달리기 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 효과음 =====
+let audioCtx = null;
+let muted = false;
+try { muted = localStorage.getItem("run_muted") === "1"; } catch {}
+function ensureAudio() {
+  if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(f, dur, type="sine", gain=0.12, when=0) {
+  if (muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t0 = ctx.currentTime + when;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  step() {
+    // 클릭마다 짧고 가벼운 소리, 음정 살짝 랜덤
+    tone(380 + Math.random() * 80, 0.04, "triangle", 0.06);
+  },
+  tick()    { tone(880, 0.05, "sine", 0.1); },
+  warn()    { tone(660, 0.08, "square", 0.12); tone(550, 0.08, "square", 0.12, 0.08); },
+  finish()  {
+    tone(523, 0.12, "triangle", 0.18, 0);
+    tone(659, 0.12, "triangle", 0.18, 0.12);
+    tone(784, 0.12, "triangle", 0.18, 0.24);
+    tone(1046, 0.3, "triangle", 0.2, 0.36);
+  },
+  timeup()  { tone(440, 0.2, "triangle", 0.15, 0); tone(330, 0.2, "triangle", 0.15, 0.18); tone(220, 0.4, "triangle", 0.15, 0.36); },
+  rank()    { tone(880, 0.08, "sine", 0.12, 0); tone(1175, 0.1, "sine", 0.12, 0.08); tone(1568, 0.15, "sine", 0.12, 0.18); },
+};
+
+// ===== 상태 =====
+const DISTANCES = [60, 100, 160, 200, 500, 600, 1000];
+const TIME_LIMIT = 60; // 초
+let goalDist = 0;
+let currentDist = 0;
+let taps = 0;
+let startMs = 0;
+let timerId = null;
+let cpsTickerId = null;
+let recentTaps = []; // 최근 1초 탭 시각
+let gameState = "idle"; // idle | running | done
+let finishMs = 0;
+
+const $ = q => document.querySelector(q);
+
+// 거리 버튼 만들기
+function buildDistanceButtons() {
+  const g = $("#distanceGrid");
+  g.innerHTML = "";
+  DISTANCES.forEach(d => {
+    const b = document.createElement("button");
+    b.className = "distance-btn" + (d >= 500 ? " long" : "") + (d >= 1000 ? " very-long" : "");
+    b.innerHTML = `<span class="d-num">${d}m</span><span class="d-tag">${tagFor(d)}</span>`;
+    b.onclick = () => startGame(d);
+    g.appendChild(b);
+  });
+}
+function tagFor(d) {
+  if (d <= 100) return "쉬움";
+  if (d <= 200) return "보통";
+  if (d <= 600) return "어려움";
+  return "도전!";
+}
+
+// 게임 시작
+function startGame(distance) {
+  goalDist = distance;
+  currentDist = 0;
+  taps = 0;
+  recentTaps = [];
+  startMs = Date.now();
+  gameState = "running";
+  finishMs = 0;
+  $("#pickOverlay").classList.remove("show");
+  $("#goalLabel").textContent = distance + "m";
+  $("#dist").textContent = "0m";
+  $("#cps").textContent = "0";
+  $("#tapBtn").classList.remove("disabled");
+  $("#tapBtn").textContent = "탭!";
+  updateRunnerPos();
+  updateProgress();
+  // 타이머
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(updateTimer, 100);
+  if (cpsTickerId) clearInterval(cpsTickerId);
+  cpsTickerId = setInterval(updateCps, 200);
+  updateTimer();
+}
+
+function updateTimer() {
+  if (gameState !== "running") return;
+  const elapsed = (Date.now() - startMs) / 1000;
+  const left = Math.max(0, TIME_LIMIT - elapsed);
+  const secs = Math.ceil(left);
+  const mm = Math.floor(secs / 60);
+  const ss = secs % 60;
+  const timeEl = $("#time");
+  timeEl.textContent = `${mm}:${ss.toString().padStart(2, "0")}`;
+  timeEl.classList.toggle("warn", left <= 10);
+  // 10초 카운트다운 신호음 (각 정수초에 한 번만)
+  if (left <= 10 && left > 0 && this._lastBeep !== secs) {
+    sfx.tick();
+    this._lastBeep = secs;
+  }
+  if (left <= 0) {
+    timeUp();
+  }
+}
+
+function updateCps() {
+  // 최근 1초 안의 탭 개수
+  const now = Date.now();
+  recentTaps = recentTaps.filter(t => now - t < 1000);
+  $("#cps").textContent = recentTaps.length;
+}
+
+function updateRunnerPos() {
+  const ratio = Math.min(1, currentDist / goalDist);
+  // 토끼는 8%~92% 사이를 움직임 (결승선은 96%)
+  const leftPct = 8 + ratio * 84;
+  $("#runner").style.left = leftPct + "%";
+}
+function updateProgress() {
+  const ratio = Math.min(1, currentDist / goalDist);
+  $("#progressFill").style.width = (ratio * 100) + "%";
+  $("#dist").textContent = currentDist + "m";
+}
+
+function tap(e) {
+  if (gameState !== "running") return;
+  if (e) e.preventDefault();
+  taps++;
+  currentDist++;
+  recentTaps.push(Date.now());
+  ensureAudio();
+  sfx.step();
+  updateRunnerPos();
+  updateProgress();
+  // 살짝 바운스
+  const r = $("#runner");
+  r.classList.remove("bounce");
+  // 강제 reflow로 애니메이션 재시작
+  void r.offsetWidth;
+  r.classList.add("bounce");
+  // 플로팅 텍스트는 너무 많이 띄우면 부담 → 10m마다만
+  if (currentDist % 10 === 0) showFloat();
+  if (currentDist >= goalDist) finishGame();
+}
+
+function showFloat() {
+  const scene = $("#scene");
+  const r = $("#runner");
+  const rect = r.getBoundingClientRect();
+  const sceneRect = scene.getBoundingClientRect();
+  const span = document.createElement("div");
+  span.className = "float-m";
+  span.textContent = `${currentDist}m`;
+  span.style.left = (rect.left - sceneRect.left + rect.width / 2) + "px";
+  span.style.top = (rect.top - sceneRect.top - 4) + "px";
+  scene.appendChild(span);
+  setTimeout(() => span.remove(), 600);
+}
+
+function finishGame() {
+  gameState = "done";
+  finishMs = Date.now() - startMs;
+  clearInterval(timerId); timerId = null;
+  clearInterval(cpsTickerId); cpsTickerId = null;
+  $("#tapBtn").classList.add("disabled");
+  $("#tapBtn").textContent = "🏁 도착!";
+  sfx.finish();
+  showResult(true);
+}
+
+function timeUp() {
+  if (gameState !== "running") return;
+  gameState = "done";
+  clearInterval(timerId); timerId = null;
+  clearInterval(cpsTickerId); cpsTickerId = null;
+  $("#tapBtn").classList.add("disabled");
+  $("#tapBtn").textContent = "⏱️ 시간 종료";
+  sfx.timeup();
+  showResult(false);
+}
+
+function computeScore(cleared) {
+  // 클리어: 거리 × 10 + 남은시간(초) × 5 (빨리 갈수록 +)
+  // 미클리어: 도달한 거리 × 5
+  if (cleared) {
+    const sec = finishMs / 1000;
+    const timeBonus = Math.max(0, TIME_LIMIT - sec);
+    return Math.round(goalDist * 10 + timeBonus * 5);
+  } else {
+    return Math.round(currentDist * 5);
+  }
+}
+
+function showResult(cleared) {
+  const score = computeScore(cleared);
+  const sec = cleared ? (finishMs / 1000) : TIME_LIMIT;
+  const avgCps = taps > 0 && sec > 0 ? (taps / sec) : 0;
+
+  $("#resultEmoji").textContent = cleared ? "🎉" : "⏱️";
+  $("#resultTitle").textContent = cleared ? `${goalDist}m 도착!` : "시간 종료!";
+  $("#resultScore").textContent = score + "점";
+
+  const lines = $("#resultLines");
+  lines.innerHTML = "";
+  const rows = [
+    ["거리", `${currentDist}m / ${goalDist}m`],
+    ["걸린 시간", cleared ? `${sec.toFixed(2)}초` : "1분 안에 못 감"],
+    ["총 탭수", `${taps}번`],
+    ["평균 초당 탭", avgCps.toFixed(1) + "번"],
+  ];
+  rows.forEach(([k, v]) => {
+    const line = document.createElement("div");
+    line.className = "result-line";
+    line.innerHTML = `<span>${k}</span><b>${v}</b>`;
+    lines.appendChild(line);
+  });
+
+  // 이름 미리 채움
+  let last = "";
+  try { last = localStorage.getItem("run_last_name") || ""; } catch {}
+  $("#nameInput").value = last;
+
+  // 점수와 결과 캐싱
+  window._lastResult = {
+    cleared, score, sec, taps, avgCps,
+    distance: currentDist, goal: goalDist,
+  };
+  $("#resultOverlay").classList.add("show");
+  setTimeout(() => $("#nameInput").focus(), 100);
+}
+
+// ===== 랭킹 =====
+const RANK_KEY = "run_rank_v1";
+const NAME_KEY = "run_last_name";
+function loadRanking() { try { return JSON.parse(localStorage.getItem(RANK_KEY)) || []; } catch { return []; } }
+function saveRanking(arr) { try { localStorage.setItem(RANK_KEY, JSON.stringify(arr)); } catch {} }
+
+async function postServer(entry) {
+  try {
+    const r = await fetch("/api/ranking/run", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(entry)
+    });
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
+}
+async function fetchServer() {
+  try {
+    const r = await fetch("/api/ranking/run", { cache:"no-store" });
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
+}
+
+let lastSavedEntryId = null;
+
+async function saveScore() {
+  const res = window._lastResult;
+  if (!res) return;
+  const name = ($("#nameInput").value || "").trim().slice(0, 8) || "토끼";
+  try { localStorage.setItem(NAME_KEY, name); } catch {}
+  const entry = {
+    id: Date.now() + Math.random(),
+    name,
+    score: res.score,
+    level: res.goal,                       // 거리를 level 필드에 (서버 스키마 재활용)
+    seconds: Math.round(res.sec),
+    moves: res.taps,                       // 탭수 = moves
+    cleared: res.cleared ? 1 : 0,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const local = loadRanking();
+  local.push(entry);
+  local.sort((a, b) => b.score - a.score);
+  saveRanking(local.slice(0, 10));
+  lastSavedEntryId = entry.id;
+  await postServer(entry);
+  $("#resultOverlay").classList.remove("show");
+  sfx.rank();
+  showRanking();
+}
+
+async function showRanking() {
+  const list = $("#rankingList");
+  list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">불러오는 중…</p>';
+  $("#rankOverlay").classList.add("show");
+  const server = await fetchServer();
+  const ranking = server !== null ? server : loadRanking();
+  const source = server !== null ? "🌐 가족 공용" : "📱 이 기기만";
+  if (ranking.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#7a6244; padding:8px;">아직 기록이 없어요</p>';
+  } else {
+    const ol = document.createElement("ol");
+    ranking.forEach(e => {
+      const li = document.createElement("li");
+      if (e.id === lastSavedEntryId) li.className = "mine";
+      const goal = e.level || 0;
+      const tag = (e.cleared === 1) ? "🏁클리어" : "미완";
+      li.innerHTML = `
+        <span class="name">${escapeHtml(e.name)}</span>
+        <span class="meta">${goal}m · ${tag} · ${e.seconds||0}초 · 탭${e.moves||0} · ${e.date||""}</span>
+        <span class="score">${e.score}점</span>`;
+      ol.appendChild(li);
+    });
+    list.innerHTML = `<p style="text-align:center; color:#7a6244; font-size:12px; margin:0 0 6px;">${source}</p>`;
+    list.appendChild(ol);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+// ===== 이벤트 =====
+// 화면 탭 영역 — pointerdown 으로 빠른 반응
+const tapBtn = $("#tapBtn");
+tapBtn.addEventListener("pointerdown", tap);
+// 키보드 (스페이스/엔터)
+window.addEventListener("keydown", (e) => {
+  if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+  if (e.code === "Space" || e.code === "Enter") {
+    e.preventDefault();
+    tap(e);
+  }
+});
+
+$("#restartBtn").onclick = () => {
+  // 다시 거리 선택으로
+  if (gameState === "running") {
+    if (!confirm("게임을 멈추고 다시 고를까요?")) return;
+  }
+  resetToPick();
+};
+$("#stopBtn").onclick = () => {
+  if (gameState === "running") {
+    // 진행중인 게임은 시간 종료 처리
+    timeUp();
+  } else if (gameState === "done") {
+    showResult(currentDist >= goalDist);
+  } else {
+    resetToPick();
+  }
+};
+$("#saveScoreBtn").onclick = () => saveScore();
+$("#skipSaveBtn").onclick = () => {
+  $("#resultOverlay").classList.remove("show");
+  resetToPick();
+};
+$("#rankRestartBtn").onclick = () => {
+  $("#rankOverlay").classList.remove("show");
+  resetToPick();
+};
+
+function resetToPick() {
+  if (timerId) clearInterval(timerId);
+  if (cpsTickerId) clearInterval(cpsTickerId);
+  timerId = null; cpsTickerId = null;
+  gameState = "idle";
+  currentDist = 0; goalDist = 0; taps = 0; recentTaps = [];
+  $("#dist").textContent = "0m";
+  $("#cps").textContent = "0";
+  $("#time").textContent = "1:00";
+  $("#time").classList.remove("warn");
+  $("#goalLabel").textContent = "-";
+  $("#progressFill").style.width = "0%";
+  $("#runner").style.left = "8%";
+  $("#tapBtn").classList.remove("disabled");
+  $("#tapBtn").textContent = "탭!";
+  $("#pickOverlay").classList.add("show");
+}
+
+// 음소거
+const muteBtn = $("#muteBtn");
+function refreshMute() { muteBtn.textContent = muted ? "🔇 소리" : "🔊 소리"; }
+refreshMute();
+muteBtn.onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem("run_muted", muted ? "1" : "0"); } catch {}
+  refreshMute();
+  if (!muted) { ensureAudio(); sfx.tick(); }
+};
+
+// 오디오 깨우기
+window.addEventListener("pointerdown", function once() {
+  ensureAudio();
+  window.removeEventListener("pointerdown", once);
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+// 초기화
+buildDistanceButtons();
+</script>
+</body>
+</html>

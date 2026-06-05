@@ -24,7 +24,7 @@ os.makedirs(DATA, exist_ok=True)
 _lock = threading.Lock()
 
 # 지원하는 게임 종류
-KINDS = ("maze", "find", "whack", "memory", "math", "sound", "snake")
+KINDS = ("maze", "find", "whack", "memory", "math", "sound", "snake", "run")
 
 
 def _ranking_path(kind):
